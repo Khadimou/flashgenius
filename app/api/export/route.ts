@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server'
+
+export const dynamic = 'force-dynamic'
 import { getSubscribers } from '@/lib/storage'
 import { USE_CASE_LABELS, FREQUENCY_LABELS, DEVICE_LABELS, INTENTION_LABELS } from '@/lib/types'
 
