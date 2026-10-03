@@ -1,67 +1,58 @@
-# FlashGenius — Landing Page
+# FlashGenius
 
-Landing page de validation pour FlashGenius : transforme automatiquement des cours en flashcards.
+Landing page de validation + application web de flashcards generees par IA.
 
 ## Stack
-- **Next.js 14** (App Router) · **Tailwind CSS** · **TypeScript**
-- **Vercel KV** (Redis) pour le stockage en production
+- **Next.js 14** (App Router) · **TypeScript** · **Tailwind CSS**
+- **Prisma** + **Neon PostgreSQL** (app data)
+- **NextAuth v4** + **Resend** (magic link auth)
+- **OpenAI gpt-4o-mini** (generation flashcards)
+- **Vercel KV / Upstash** (waitlist landing page)
 
 ## Demarrage
 
 ```bash
 npm install
+npx prisma db push        # Cree les tables (DATABASE_URL requis)
 npm run dev
-# -> http://localhost:3000
+# → http://localhost:3000
 ```
 
-En developpement, les donnees sont stockees dans `data/subscribers.json`.
+En dev, le magic link est logue dans le terminal (pas d'email envoye).
 
 ## Pages
 
 | URL | Description |
 |---|---|
-| `/` | Landing page principale |
-| `/merci` | Confirmation + questionnaire post-inscription |
-| `/dashboard` | Dashboard admin (protege) |
-| `/api/export` | Export CSV (UTF-8 BOM pour Excel FR) |
+| `/` | Landing page |
+| `/login` | Connexion magic link |
+| `/app` | Dashboard flashcards |
+| `/app/generate` | Generer des flashcards depuis un texte |
+| `/app/library` | Bibliotheque des decks |
+| `/app/deck/[id]` | Detail d'un deck (grille + edition) |
+| `/app/review/[id]` | Revision classique |
+| `/app/sr` | Dashboard revision espacee (SM-2) |
+| `/app/sr/[id]` | Session SR pour un deck |
+| `/dashboard` | Dashboard waitlist admin |
 
-## Dashboard
+## Configuration
 
-Basic Auth sur `/dashboard` :
-- **User** : `admin`
-- **Password** : `flashgenius` (ou `DASHBOARD_PASSWORD` dans les env vars)
+Copie `.env.local.example` en `.env.local` et remplis :
+
+1. **Neon** : cree un projet sur neon.tech, copie `DATABASE_URL` et `DIRECT_URL`
+2. **NEXTAUTH_SECRET** : `openssl rand -base64 32`
+3. **OpenAI** : cle API sur platform.openai.com
+4. **Resend** (prod uniquement) : cle API sur resend.com
 
 ## Deploiement Vercel
 
 ```bash
-# 1. Push sur GitHub
-git init && git add . && git commit -m "feat: FlashGenius landing"
-git remote add origin https://github.com/TON_USER/flashgenius-landing.git
-git push -u origin main
-
-# 2. Importer sur vercel.com/new
-
-# 3. (Optionnel) Storage persistant
-#    Vercel Dashboard -> Storage -> Create KV Database
-vercel link && vercel env pull .env.local
+git add . && git commit -m "feat: app flashcards" && git push
 ```
 
-## Variables d'environnement Vercel
+Variables a ajouter sur Vercel (Settings → Environment Variables) :
+`DATABASE_URL`, `DIRECT_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`,
+`OPENAI_API_KEY`, `RESEND_API_KEY`, `EMAIL_FROM`
 
-| Variable | Description |
-|---|---|
-| `KV_REST_API_URL` | URL Vercel KV |
-| `KV_REST_API_TOKEN` | Token Vercel KV |
-| `DASHBOARD_PASSWORD` | Mot de passe dashboard (defaut: flashgenius) |
-
-> Sans KV : donnees dans `data/subscribers.json` en dev, en memoire en prod.
-> Configure KV pour la production.
-
-## Metriques trackees
-
-- Total inscrits + taux completion questionnaire
-- Cas d'usage (universite, examens, langues, certifications, pro, autre)
-- Frequence (1-2x/sem, 3-5x/sem, quotidien)
-- Appareil cible (iPhone, Android, Ordinateur)
-- Intention (gratuit, payant, juste suivre)
-- Export CSV complet
+Pour les migrations Vercel : ajoute en build command :
+`prisma generate && prisma db push && next build`
