@@ -22,7 +22,7 @@ export default function CardEditor({ card, categories, onSave, onCancel }: Props
   const [cat, setCat] = useState(card.category)
   const [newCat, setNewCat] = useState('')
 
-  const allCats = [...new Set([...categories, ...(newCat ? [newCat] : [])])]
+  const allCats = Array.from(new Set([...categories, ...(newCat ? [newCat] : [])]))
 
   return (
     <div className="rounded-2xl border-2 border-violet-500/30 bg-violet-500/5 p-5 space-y-3">

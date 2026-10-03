@@ -8,7 +8,7 @@ import CardEditor, { CardDraft } from '@/components/app/CardEditor'
 interface Card extends CardDraft { id: string }
 
 function uniqueCategories(cards: CardDraft[]) {
-  return [...new Set(cards.map((c) => c.category).filter(Boolean))]
+  return Array.from(new Set(cards.map((c) => c.category).filter(Boolean)))
 }
 
 export default function GeneratePage() {

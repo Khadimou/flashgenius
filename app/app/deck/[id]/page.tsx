@@ -10,7 +10,7 @@ interface Card extends CardDraft { id: string; position: number; dueDate: string
 interface Deck { id: string; name: string; cards: Card[]; folder?: { id: string; name: string } | null }
 
 function uniqueCategories(cards: Card[]) {
-  return [...new Set(cards.map((c) => c.category).filter(Boolean))]
+  return Array.from(new Set(cards.map((c) => c.category).filter(Boolean)))
 }
 
 export default function DeckPage() {
