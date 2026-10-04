@@ -83,16 +83,25 @@ export default async function LibraryPage() {
           )}
 
           {/* Decks par dossier */}
-          {folders.map((f) => byFolder[f.id]?.length > 0 && (
+          {folders.map((f) => (
             <section key={f.id}>
               <h2 className="text-xs font-bold text-gray-400 dark:text-white/30 uppercase tracking-widest mb-3 flex items-center gap-2">
                 <span>📁</span> {f.name}
+                <span className="text-gray-300 dark:text-white/15 font-normal normal-case tracking-normal">
+                  {byFolder[f.id]?.length ?? 0} deck{(byFolder[f.id]?.length ?? 0) !== 1 ? 's' : ''}
+                </span>
               </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {byFolder[f.id].map((d) => (
-                  <DeckCard key={d.id} deck={{ id: d.id, name: d.name, cardCount: d._count.cards, dueCount: dueCount(d), updatedAt: d.updatedAt.toISOString() }} />
-                ))}
-              </div>
+              {byFolder[f.id]?.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {byFolder[f.id].map((d) => (
+                    <DeckCard key={d.id} deck={{ id: d.id, name: d.name, cardCount: d._count.cards, dueCount: dueCount(d), updatedAt: d.updatedAt.toISOString() }} />
+                  ))}
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-20 rounded-2xl border-2 border-dashed border-gray-200 dark:border-white/[0.06] text-xs text-gray-400 dark:text-white/20">
+                  Dossier vide — assigne un deck depuis sa page
+                </div>
+              )}
             </section>
           ))}
         </div>
