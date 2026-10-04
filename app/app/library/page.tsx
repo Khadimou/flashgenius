@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import DeckCard from '@/components/app/DeckCard'
+import FolderManager from '@/components/app/FolderManager'
 
 export const revalidate = 0
 
@@ -49,10 +50,13 @@ export default async function LibraryPage() {
             {decks.length} deck{decks.length > 1 ? 's' : ''} · {decks.reduce((s, d) => s + d._count.cards, 0)} cartes
           </p>
         </div>
-        <Link href="/app/generate"
-          className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 transition-all">
-          ⚡ Nouveau deck
-        </Link>
+        <div className="flex items-center gap-2 flex-wrap">
+          <FolderManager folders={folders} />
+          <Link href="/app/generate"
+            className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 transition-all">
+            ⚡ Nouveau deck
+          </Link>
+        </div>
       </div>
 
       {decks.length === 0 ? (

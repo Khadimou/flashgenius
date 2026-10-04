@@ -5,9 +5,11 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import FlashCard from '@/components/app/FlashCard'
 import CardEditor, { CardDraft } from '@/components/app/CardEditor'
+import DeckFolderPicker from '@/components/app/DeckFolderPicker'
 
 interface Card extends CardDraft { id: string; position: number; dueDate: string }
 interface Deck { id: string; name: string; cards: Card[]; folder?: { id: string; name: string } | null }
+interface Folder { id: string; name: string }
 
 function uniqueCategories(cards: Card[]) {
   return Array.from(new Set(cards.map((c) => c.category).filter(Boolean)))
@@ -17,15 +19,21 @@ export default function DeckPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const [deck, setDeck] = useState<Deck | null>(null)
+  const [folders, setFolders] = useState<Folder[]>([])
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
-    fetch('/api/decks/' + id)
-      .then((r) => r.json())
-      .then((d) => { setDeck(d.deck); setLoading(false) })
+    Promise.all([
+      fetch('/api/decks/' + id).then((r) => r.json()),
+      fetch('/api/folders').then((r) => r.json()),
+    ]).then(([d, f]) => {
+      setDeck(d.deck)
+      setFolders(f.folders ?? [])
+      setLoading(false)
+    })
   }, [id])
 
   const categories = deck ? uniqueCategories(deck.cards) : []
@@ -108,6 +116,7 @@ export default function DeckPage() {
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            <DeckFolderPicker deckId={id} currentFolderId={deck.folder?.id} folders={folders} />
             <Link href={'/app/review/' + id}
               className="px-4 py-2 rounded-xl text-sm font-medium text-gray-700 dark:text-white/70 border border-gray-200 dark:border-white/10 hover:border-violet-400 dark:hover:border-violet-500/40 transition-all bg-white dark:bg-transparent">
               ▶ Reviser
