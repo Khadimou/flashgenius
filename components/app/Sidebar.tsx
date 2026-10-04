@@ -72,6 +72,7 @@ export default function Sidebar({ user }: { user: User }) {
               {(user.name ?? user.email ?? '?')[0].toUpperCase()}
             </div>
             <span className="text-white/40 text-xs truncate flex-1">{user.email}</span>
+            <Link href="/app/account" title="Parametres" className="text-white/25 hover:text-white/60 text-xs transition-colors">⚙</Link>
             <button onClick={() => signOut({ callbackUrl: '/' })} title="Deconnexion"
               className="text-white/25 hover:text-white/60 text-xs transition-colors">↩</button>
           </div>
