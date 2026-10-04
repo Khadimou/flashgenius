@@ -60,7 +60,7 @@ export default function AccountPage({ email }: Props) {
           <div>
             <label className="block text-xs font-medium text-gray-500 dark:text-white/40 mb-1">Mot de passe actuel</label>
             <input
-              type="password" value={currentPassword}
+              id="current-password" name="current-password" type="password" autoComplete="current-password" value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
               placeholder="Laisser vide si pas encore defini"
               className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-white/10 bg-transparent text-sm text-gray-900 dark:text-white placeholder-gray-300 dark:placeholder-white/20 focus:outline-none focus:ring-2 focus:ring-violet-500/30"
@@ -69,7 +69,7 @@ export default function AccountPage({ email }: Props) {
           <div>
             <label className="block text-xs font-medium text-gray-500 dark:text-white/40 mb-1">Nouveau mot de passe</label>
             <input
-              type="password" value={password} required
+              id="new-password" name="new-password" type="password" autoComplete="new-password" required value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Minimum 8 caracteres"
               className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-white/10 bg-transparent text-sm text-gray-900 dark:text-white placeholder-gray-300 dark:placeholder-white/20 focus:outline-none focus:ring-2 focus:ring-violet-500/30"
@@ -78,7 +78,7 @@ export default function AccountPage({ email }: Props) {
           <div>
             <label className="block text-xs font-medium text-gray-500 dark:text-white/40 mb-1">Confirmer</label>
             <input
-              type="password" value={confirm} required
+              id="confirm-password" name="confirm-password" type="password" autoComplete="new-password" required value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               placeholder="Repete le mot de passe"
               className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-white/10 bg-transparent text-sm text-gray-900 dark:text-white placeholder-gray-300 dark:placeholder-white/20 focus:outline-none focus:ring-2 focus:ring-violet-500/30"

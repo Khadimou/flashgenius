@@ -80,11 +80,11 @@ function LoginForm() {
 
       {tab === 'password' ? (
         <form onSubmit={submitPassword} className="space-y-3">
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-            placeholder="ton@email.com" required
+          <input id="login-email" name="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+            placeholder="ton@email.com" required autoComplete="email"
             className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/25 focus:outline-none focus:ring-2 focus:ring-violet-500 transition-all" />
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-            placeholder="Mot de passe" required
+          <input id="login-password" name="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+            placeholder="Mot de passe" required autoComplete="current-password"
             className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/25 focus:outline-none focus:ring-2 focus:ring-violet-500 transition-all" />
           {status === 'error' && <p className="text-red-400 text-sm">{errorMsg}</p>}
           <button type="submit" disabled={status === 'loading'}
@@ -97,8 +97,8 @@ function LoginForm() {
         </form>
       ) : (
         <form onSubmit={submitMagic} className="space-y-3">
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-            placeholder="ton@email.com" required
+          <input id="magic-email" name="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+            placeholder="ton@email.com" required autoComplete="email"
             className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/25 focus:outline-none focus:ring-2 focus:ring-violet-500 transition-all" />
           <button type="submit" disabled={!email || status === 'loading'}
             className="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 disabled:opacity-50 transition-all">
