@@ -24,6 +24,8 @@ export default function DeckPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [renamingDeck, setRenamingDeck] = useState(false)
+  const [deckNameDraft, setDeckNameDraft] = useState('')
 
   useEffect(() => {
     Promise.all([
@@ -83,6 +85,20 @@ export default function DeckPage() {
     router.push('/app/library')
   }
 
+  async function renameDeck() {
+    const name = deckNameDraft.trim()
+    if (!name || name === deck?.name) { setRenamingDeck(false); return }
+    const res = await fetch('/api/decks/' + id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    })
+    if (res.ok) {
+      setDeck((d) => d ? { ...d, name } : d)
+    }
+    setRenamingDeck(false)
+  }
+
   if (loading) return (
     <div className="flex items-center justify-center h-64">
       <div className="animate-spin w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full" />
@@ -109,7 +125,24 @@ export default function DeckPage() {
         </div>
         <div className="flex items-start justify-between flex-wrap gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{deck.name}</h1>
+            {renamingDeck ? (
+              <input
+                autoFocus
+                value={deckNameDraft}
+                onChange={(e) => setDeckNameDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") renameDeck(); if (e.key === "Escape") setRenamingDeck(false) }}
+                onBlur={renameDeck}
+                className="text-2xl font-bold bg-transparent border-b-2 border-violet-500 text-gray-900 dark:text-white outline-none w-full max-w-sm"
+              />
+            ) : (
+              <h1
+                className="text-2xl font-bold text-gray-900 dark:text-white cursor-pointer hover:text-violet-600 dark:hover:text-violet-400 transition-colors group/title flex items-center gap-2"
+                onClick={() => { setDeckNameDraft(deck.name); setRenamingDeck(true) }}
+                title="Cliquer pour renommer">
+                {deck.name}
+                <span className="text-sm font-normal text-gray-300 dark:text-white/20 opacity-0 group-hover/title:opacity-100 transition-opacity">✏️</span>
+              </h1>
+            )}
             <p className="text-gray-400 dark:text-white/30 text-sm mt-1">
               {deck.cards.length} carte{deck.cards.length > 1 ? 's' : ''}
               {dueCards.length > 0 && <span className="ml-2 text-amber-500">· {dueCards.length} a reviser</span>}
