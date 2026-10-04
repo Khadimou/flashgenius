@@ -49,7 +49,7 @@ export const authOptions: NextAuthOptions = {
     verifyRequest: '/login?verify=1',
     error: '/login?error=1',
   },
-  session: { strategy: 'database' },
+  session: { strategy: 'database', maxAge: 90 * 24 * 60 * 60 },
   callbacks: {
     session({ session, user }) {
       if (session.user) (session.user as { id?: string }).id = user.id
