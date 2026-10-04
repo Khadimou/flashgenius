@@ -54,7 +54,7 @@ export const authOptions: NextAuthOptions = {
                 Me connecter &rarr;
               </a>
               <p style="color:#6b7280;font-size:12px;margin-top:24px">
-                Ce lien expire dans 72h et ne peut être utilisé qu'une seule fois.
+                Ce lien expire dans 72h et ne peut etre utilise qu une seule fois.
               </p>
             </div>
           `,
@@ -67,10 +67,14 @@ export const authOptions: NextAuthOptions = {
     verifyRequest: '/login?verify=1',
     error: '/login?error=1',
   },
-  session: { strategy: 'database', maxAge: 90 * 24 * 60 * 60 },
+  session: { strategy: 'jwt', maxAge: 90 * 24 * 60 * 60 },
   callbacks: {
-    session({ session, user }) {
-      if (session.user) (session.user as { id?: string }).id = user.id
+    async jwt({ token, user }) {
+      if (user) token.id = user.id
+      return token
+    },
+    async session({ session, token }) {
+      if (session.user) (session.user as { id?: string }).id = token.id as string
       return session
     },
   },
