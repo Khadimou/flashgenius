@@ -62,8 +62,9 @@ function LoginForm() {
             </p>
 
             {error && (
-              <div className="mb-4 p-3 rounded-xl bg-red-950/40 border border-red-800/30 text-red-400 text-sm">
-                Lien invalide ou expire. Reessaie.
+              <div className="mb-4 p-3 rounded-xl bg-amber-950/30 border border-amber-800/30 text-amber-400 text-sm leading-relaxed">
+                <strong className="block mb-1">Lien expiré ou déjà utilisé.</strong>
+                Entre ton email ci-dessous pour recevoir un nouveau lien.
               </div>
             )}
 

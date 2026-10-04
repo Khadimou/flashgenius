@@ -19,6 +19,7 @@ export const authOptions: NextAuthOptions = {
   providers: [
     EmailProvider({
       from: process.env.EMAIL_FROM ?? 'FlashGenius <noreply@gmail.com>',
+      maxAge: 72 * 60 * 60, // 72h
       async sendVerificationRequest({ identifier: email, url }) {
         if (process.env.NODE_ENV !== 'production') {
           console.log(`\n[Magic Link] ${email}\n${url}\n`)
