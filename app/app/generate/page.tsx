@@ -24,16 +24,23 @@ export default function GeneratePage() {
   const [transcribing, setTranscribing] = useState(false)
   const [isPremium, setIsPremium] = useState<boolean | null>(null)
   const [showPremiumGate, setShowPremiumGate] = useState(false)
+  const [usageCount, setUsageCount] = useState<number | null>(null)
+  const [usageLimit, setUsageLimit] = useState<number | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const videoRef = useRef<HTMLInputElement>(null)
 
   const categories = uniqueCategories(cards)
   const MIN = 20
+  const FREE_LIMIT = 10
 
   useEffect(() => {
     fetch('/api/account/me')
       .then((r) => r.json())
-      .then((d) => setIsPremium(!!d.isPremium))
+      .then((d) => {
+        setIsPremium(!!d.isPremium)
+        setUsageCount(d.generationsCount ?? 0)
+        setUsageLimit(d.isPremium ? null : FREE_LIMIT)
+      })
       .catch(() => setIsPremium(false))
   }, [])
 
@@ -51,6 +58,10 @@ export default function GeneratePage() {
       const data = await res.json()
       if (!res.ok) { setError(data.error ?? 'Erreur'); return }
       setCards(data.cards.map((c: CardDraft, i: number) => ({ ...c, id: String(i) })))
+      if (data.usage) {
+        setUsageCount(data.usage.used)
+        if (!data.usage.isPremium) setUsageLimit(data.usage.limit)
+      }
     } catch {
       setError('Connexion impossible')
     } finally {
@@ -230,6 +241,21 @@ export default function GeneratePage() {
               <p className="text-amber-500 text-xs">Minimum {MIN} caracteres requis</p>
             )}
           </div>
+
+          {/* Usage counter */}
+          {usageLimit !== null && usageCount !== null && (
+            <div className="flex items-center gap-2">
+              <div className="flex-1 h-1.5 rounded-full bg-gray-100 dark:bg-white/10 overflow-hidden max-w-[180px]">
+                <div
+                  className={"h-full rounded-full transition-all " + (usageCount >= usageLimit ? "bg-red-400" : usageCount >= usageLimit * 0.8 ? "bg-amber-400" : "bg-violet-500")}
+                  style={{ width: `${Math.min(100, (usageCount / usageLimit) * 100)}%` }}
+                />
+              </div>
+              <span className={"text-xs " + (usageCount >= usageLimit ? "text-red-400 font-medium" : "text-gray-400 dark:text-white/35")}>
+                {usageCount} / {usageLimit} ce mois
+              </span>
+            </div>
+          )}
 
           {error && <p className="text-red-400 text-sm">{error}</p>}
         </div>
