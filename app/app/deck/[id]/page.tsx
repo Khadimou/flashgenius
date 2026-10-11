@@ -8,8 +8,24 @@ import CardEditor, { CardDraft } from '@/components/app/CardEditor'
 import DeckFolderPicker from '@/components/app/DeckFolderPicker'
 
 interface Card extends CardDraft { id: string; position: number; dueDate: string }
-interface Deck { id: string; name: string; cards: Card[]; folder?: { id: string; name: string } | null }
+interface Deck {
+  id: string; name: string
+  shareStatus: 'DRAFT' | 'REVISION' | 'EXAM'
+  cards: Card[]
+  folder?: { id: string; name: string } | null
+}
 interface Folder { id: string; name: string }
+
+const STATUS_LABEL: Record<string, string> = {
+  DRAFT: 'Brouillon',
+  REVISION: 'En révision',
+  EXAM: 'Mode examen',
+}
+const STATUS_COLOR: Record<string, string> = {
+  DRAFT: 'text-gray-400 dark:text-white/30 border-gray-200 dark:border-white/10',
+  REVISION: 'text-emerald-600 dark:text-emerald-400 border-emerald-300 dark:border-emerald-500/40',
+  EXAM: 'text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-500/40',
+}
 
 function uniqueCategories(cards: Card[]) {
   return Array.from(new Set(cards.map((c) => c.category).filter(Boolean)))
@@ -26,14 +42,19 @@ export default function DeckPage() {
   const [deleting, setDeleting] = useState(false)
   const [renamingDeck, setRenamingDeck] = useState(false)
   const [deckNameDraft, setDeckNameDraft] = useState('')
+  const [isTeacher, setIsTeacher] = useState(false)
+  const [togglingShare, setTogglingShare] = useState(false)
+  const [showInviteCopied, setShowInviteCopied] = useState(false)
 
   useEffect(() => {
     Promise.all([
       fetch('/api/decks/' + id).then((r) => r.json()),
       fetch('/api/folders').then((r) => r.json()),
-    ]).then(([d, f]) => {
+      fetch('/api/account/me').then((r) => r.json()),
+    ]).then(([d, f, me]) => {
       setDeck(d.deck)
       setFolders(f.folders ?? [])
+      setIsTeacher(me.role === 'TEACHER')
       setLoading(false)
     })
   }, [id])
@@ -55,12 +76,6 @@ export default function DeckPage() {
   }
 
   async function addCard(draft: CardDraft) {
-    const res = await fetch('/api/decks/' + id, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
-    })
-    // Create card via POST to a virtual route — simpler: reload after add
     const cardRes = await fetch('/api/decks/' + id + '/cards', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -93,10 +108,28 @@ export default function DeckPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name }),
     })
-    if (res.ok) {
-      setDeck((d) => d ? { ...d, name } : d)
-    }
+    if (res.ok) setDeck((d) => d ? { ...d, name } : d)
     setRenamingDeck(false)
+  }
+
+  async function cycleShareStatus() {
+    if (!deck || togglingShare) return
+    setTogglingShare(true)
+    const next = deck.shareStatus === 'DRAFT' ? 'REVISION' : deck.shareStatus === 'REVISION' ? 'EXAM' : 'DRAFT'
+    const res = await fetch('/api/decks/' + id + '/share', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: next }),
+    })
+    if (res.ok) setDeck((d) => d ? { ...d, shareStatus: next } : d)
+    setTogglingShare(false)
+  }
+
+  function copyInviteLink() {
+    const link = `${window.location.origin}/join/${id}`
+    navigator.clipboard.writeText(link)
+    setShowInviteCopied(true)
+    setTimeout(() => setShowInviteCopied(false), 2000)
   }
 
   if (loading) return (
@@ -127,10 +160,9 @@ export default function DeckPage() {
           <div>
             {renamingDeck ? (
               <input
-                autoFocus
-                value={deckNameDraft}
+                autoFocus value={deckNameDraft}
                 onChange={(e) => setDeckNameDraft(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") renameDeck(); if (e.key === "Escape") setRenamingDeck(false) }}
+                onKeyDown={(e) => { if (e.key === 'Enter') renameDeck(); if (e.key === 'Escape') setRenamingDeck(false) }}
                 onBlur={renameDeck}
                 className="text-2xl font-bold bg-transparent border-b-2 border-violet-500 text-gray-900 dark:text-white outline-none w-full max-w-sm"
               />
@@ -148,8 +180,30 @@ export default function DeckPage() {
               {dueCards.length > 0 && <span className="ml-2 text-amber-500">· {dueCards.length} a reviser</span>}
             </p>
           </div>
+
           <div className="flex items-center gap-2 flex-wrap">
             <DeckFolderPicker deckId={id} currentFolderId={deck.folder?.id} folders={folders} />
+
+            {/* Teacher share controls */}
+            {isTeacher && (
+              <>
+                <button onClick={cycleShareStatus} disabled={togglingShare}
+                  className={"px-3 py-2 rounded-xl text-xs font-medium border transition-all " + STATUS_COLOR[deck.shareStatus]}>
+                  {togglingShare ? '...' : (
+                    deck.shareStatus === 'DRAFT' ? '▷ Publier pour les eleves' :
+                    deck.shareStatus === 'REVISION' ? '🔒 Mode examen' :
+                    '📄 Reprendre revision'
+                  )}
+                </button>
+                {deck.shareStatus === 'REVISION' && (
+                  <button onClick={copyInviteLink}
+                    className="px-3 py-2 rounded-xl text-xs font-medium bg-violet-600 text-white hover:bg-violet-500 transition-colors">
+                    {showInviteCopied ? '✓ Copie !' : '🔗 Lien invitation'}
+                  </button>
+                )}
+              </>
+            )}
+
             <Link href={'/app/review/' + id}
               className="px-4 py-2 rounded-xl text-sm font-medium text-gray-700 dark:text-white/70 border border-gray-200 dark:border-white/10 hover:border-violet-400 dark:hover:border-violet-500/40 transition-all bg-white dark:bg-transparent">
               ▶ Reviser
@@ -172,6 +226,13 @@ export default function DeckPage() {
             </button>
           </div>
         </div>
+
+        {/* Share status badge */}
+        {isTeacher && deck.shareStatus !== 'DRAFT' && (
+          <div className={"inline-flex items-center gap-1.5 mt-3 px-3 py-1 rounded-full text-xs font-medium border " + STATUS_COLOR[deck.shareStatus]}>
+            {deck.shareStatus === 'REVISION' ? '🟢' : '🟡'} {STATUS_LABEL[deck.shareStatus]}
+          </div>
+        )}
       </div>
 
       {/* Categories */}
@@ -204,7 +265,7 @@ export default function DeckPage() {
 
         {adding ? (
           <CardEditor
-            card={{ question:'', answer:'', category: categories[0] ?? 'General' }}
+            card={{ question: '', answer: '', category: categories[0] ?? 'General' }}
             categories={categories}
             onSave={addCard}
             onCancel={() => setAdding(false)} />

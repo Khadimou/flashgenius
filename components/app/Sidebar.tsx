@@ -11,6 +11,7 @@ const NAV = [
   { href:'/app', label:'Tableau de bord', icon:'🏠', exact:true },
   { href:'/app/generate', label:'Generer', icon:'⚡', exact:false },
   { href:'/app/library', label:'Bibliotheque', icon:'📚', exact:false },
+  { href:'/app/courses', label:'Cours', icon:'🎓', exact:false },
   { href:'/app/sr', label:'Revision SR', icon:'🧠', exact:false },
 ]
 

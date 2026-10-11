@@ -13,13 +13,27 @@ export async function GET(_: NextRequest, { params }: { params: { id: string } }
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Non autorise' }, { status: 401 })
 
-  const deck = await prisma.deck.findFirst({
-    where: { id: params.id, userId: session.user.id },
-    include: {
-      folder: true,
-      cards: { orderBy: { position: 'asc' } },
-    },
+  const userId = (session.user as { id: string }).id
+
+  // Try owner first
+  let deck = await prisma.deck.findFirst({
+    where: { id: params.id, userId },
+    include: { folder: true, cards: { orderBy: { position: 'asc' } } },
   })
+
+  // If not owner, check enrollment (REVISION only, not EXAM)
+  if (!deck) {
+    const enrollment = await prisma.enrollment.findUnique({
+      where: { studentId_deckId: { studentId: userId, deckId: params.id } },
+    })
+    if (enrollment) {
+      deck = await prisma.deck.findFirst({
+        where: { id: params.id, shareStatus: 'REVISION' },
+        include: { folder: true, cards: { orderBy: { position: 'asc' } } },
+      })
+    }
+  }
+
   if (!deck) return NextResponse.json({ error: 'Introuvable' }, { status: 404 })
   return NextResponse.json({ deck })
 }
@@ -28,7 +42,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Non autorise' }, { status: 401 })
 
-  const existing = await ownDeck(session.user.id, params.id)
+  const userId = (session.user as { id: string }).id
+  const existing = await ownDeck(userId, params.id)
   if (!existing) return NextResponse.json({ error: 'Introuvable' }, { status: 404 })
 
   const { name, folderId } = await req.json()
@@ -46,7 +61,8 @@ export async function DELETE(_: NextRequest, { params }: { params: { id: string 
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Non autorise' }, { status: 401 })
 
-  const existing = await ownDeck(session.user.id, params.id)
+  const userId = (session.user as { id: string }).id
+  const existing = await ownDeck(userId, params.id)
   if (!existing) return NextResponse.json({ error: 'Introuvable' }, { status: 404 })
 
   await prisma.deck.delete({ where: { id: params.id } })

@@ -8,6 +8,17 @@ datasource db {
   directUrl = env("POSTGRES_URL_NON_POOLING")
 }
 
+enum Role {
+  STUDENT
+  TEACHER
+}
+
+enum DeckStatus {
+  DRAFT
+  REVISION
+  EXAM
+}
+
 model Account {
   id                String  @id @default(cuid())
   userId            String
@@ -34,19 +45,24 @@ model Session {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  password      String?
-  isPremium            Boolean   @default(false)
-  generationsCount     Int       @default(0)
-  generationsResetAt   DateTime  @default(now())
-  accounts      Account[]
-  sessions      Session[]
-  folders       Folder[]
-  decks         Deck[]
+  id                   String       @id @default(cuid())
+  name                 String?
+  email                String?      @unique
+  emailVerified        DateTime?
+  image                String?
+  password             String?
+  isPremium            Boolean      @default(false)
+  generationsCount     Int          @default(0)
+  generationsResetAt   DateTime     @default(now())
+  role                 Role         @default(STUDENT)
+  bio                  String?      @db.Text
+  subject              String?
+  slug                 String?      @unique
+  accounts             Account[]
+  sessions             Session[]
+  folders              Folder[]
+  decks                Deck[]
+  enrollments          Enrollment[] @relation("StudentEnrollments")
 }
 
 model VerificationToken {
@@ -67,15 +83,27 @@ model Folder {
 }
 
 model Deck {
-  id        String   @id @default(cuid())
-  name      String
-  userId    String
-  folderId  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  folder    Folder?  @relation(fields: [folderId], references: [id], onDelete: SetNull)
-  cards     Card[]
+  id          String     @id @default(cuid())
+  name        String
+  userId      String
+  folderId    String?
+  shareStatus DeckStatus @default(DRAFT)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  folder      Folder?    @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  cards       Card[]
+  enrollments Enrollment[]
+}
+
+model Enrollment {
+  id         String   @id @default(cuid())
+  studentId  String
+  deckId     String
+  enrolledAt DateTime @default(now())
+  student    User     @relation("StudentEnrollments", fields: [studentId], references: [id], onDelete: Cascade)
+  deck       Deck     @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  @@unique([studentId, deckId])
 }
 
 model Card {

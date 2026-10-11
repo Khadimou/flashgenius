@@ -11,9 +11,19 @@ export async function GET() {
 
   const user = await prisma.user.findUnique({
     where: { id: (session.user as { id: string }).id },
-    select: { id: true, email: true, name: true, isPremium: true, generationsCount: true, generationsResetAt: true },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      isPremium: true,
+      generationsCount: true,
+      generationsResetAt: true,
+      role: true,
+      bio: true,
+      subject: true,
+      slug: true,
+    },
   })
   if (!user) return NextResponse.json({ error: 'Utilisateur introuvable' }, { status: 404 })
-
   return NextResponse.json(user)
 }
