@@ -24,6 +24,9 @@ export default function GeneratePage() {
   const [transcribing, setTranscribing] = useState(false)
   const [isPremium, setIsPremium] = useState<boolean | null>(null)
   const [showPremiumGate, setShowPremiumGate] = useState(false)
+  const [showYtInput, setShowYtInput] = useState(false)
+  const [ytUrl, setYtUrl] = useState('')
+  const [fetchingYt, setFetchingYt] = useState(false)
   const [usageCount, setUsageCount] = useState<number | null>(null)
   const [usageLimit, setUsageLimit] = useState<number | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -108,6 +111,28 @@ export default function GeneratePage() {
       setError('Connexion impossible lors de la transcription')
     } finally {
       setTranscribing(false)
+    }
+  }
+
+  async function handleYoutube() {
+    if (!ytUrl.trim() || fetchingYt) return
+    setFetchingYt(true)
+    setError('')
+    try {
+      const res = await fetch('/api/youtube', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: ytUrl.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setError(data.error ?? 'Erreur'); return }
+      setText(data.transcript)
+      setShowYtInput(false)
+      setYtUrl('')
+    } catch {
+      setError('Connexion impossible')
+    } finally {
+      setFetchingYt(false)
     }
   }
 
@@ -237,12 +262,55 @@ export default function GeneratePage() {
               accept=".mp4,.mp3,.m4a,.wav,.webm,.mpeg,.mpga,.ogg,video/*,audio/*"
               onChange={handleVideo} className="hidden" />
 
+            {/* YouTube URL button */}
+            <button onClick={() => { setShowYtInput((v) => !v); setError('') }}
+              disabled={transcribing || fetchingYt}
+              className="px-5 py-3 rounded-xl text-sm font-medium border transition-all flex items-center gap-2 bg-white dark:bg-transparent disabled:opacity-40
+                text-red-600 dark:text-red-400 border-red-300 dark:border-red-500/40
+                hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-500/10">
+              &#9654; YouTube
+            </button>
+
             {text.length > 0 && text.trim().length < MIN && (
               <p className="text-amber-500 text-xs">Minimum {MIN} caracteres requis</p>
             )}
           </div>
 
-          {/* Usage counter */}
+          {/* YouTube URL input */}
+          {showYtInput && (
+            <div className="flex items-center gap-2 flex-wrap p-4 rounded-2xl bg-red-50 dark:bg-red-950/10 border border-red-200 dark:border-red-500/20">
+              <input
+                autoFocus
+                type="url"
+                value={ytUrl}
+                onChange={(e) => setYtUrl(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleYoutube()}
+                placeholder="https://www.youtube.com/watch?v=..."
+                className="flex-1 min-w-0 px-4 py-2.5 rounded-xl bg-white dark:bg-white/5 border border-red-200 dark:border-red-500/20 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/25 focus:outline-none focus:ring-2 focus:ring-red-400/50"
+              />
+              <button onClick={handleYoutube} disabled={!ytUrl.trim() || fetchingYt}
+                className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-red-500 hover:bg-red-400 disabled:opacity-40 transition-colors flex items-center gap-2 shrink-0">
+                {fetchingYt ? (
+                  <>
+                    <svg className="animate-spin h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+                    Recuperation...
+                  </>
+                ) : 'Importer'}
+              </button>
+              <button onClick={() => { setShowYtInput(false); setYtUrl('') }}
+                className="px-3 py-2.5 rounded-xl text-sm text-gray-400 hover:text-gray-600 dark:hover:text-white border border-gray-200 dark:border-white/10 transition-colors shrink-0">
+                ✕
+              </button>
+              <p className="w-full text-xs text-red-500/70 dark:text-red-400/60">
+                Fonctionne avec les videos ayant des sous-titres (auto ou manuels).
+              </p>
+            </div>
+          )}
+
+          {/* Usage counter */}}
           {usageLimit !== null && usageCount !== null && (
             <div className="flex items-center gap-2">
               <div className="flex-1 h-1.5 rounded-full bg-gray-100 dark:bg-white/10 overflow-hidden max-w-[180px]">
