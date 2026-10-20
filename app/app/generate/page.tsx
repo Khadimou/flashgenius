@@ -278,7 +278,7 @@ export default function GeneratePage() {
                   </svg>
                   Generation en cours...
                 </>
-              ) : '&#9889; Generer les flashcards'}
+              ) : '⚡ Generer les flashcards'}
             </button>
 
             <button onClick={() => fileRef.current?.click()}
