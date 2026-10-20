@@ -363,7 +363,7 @@ export default function GeneratePage() {
               {ytWhisperAvailable && (
                 <div className="w-full flex items-center gap-2 pt-2 border-t border-red-200/50 dark:border-red-500/20">
                   <p className="flex-1 text-xs text-amber-600 dark:text-amber-400">
-                    Pas de sous-titres ? Transcris l'audio avec Whisper (Premium, max 15 min).
+                    Pas de sous-titres ? L'IA transcrit l'audio automatiquement (Premium).
                   </p>
                   <button onClick={handleYoutubeWhisper} disabled={whisperingYt}
                     className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-amber-500 hover:bg-amber-400 disabled:opacity-40 transition-colors flex items-center gap-2">
@@ -375,7 +375,7 @@ export default function GeneratePage() {
                         </svg>
                         Transcription...
                       </>
-                    ) : (<>&#127908; Essayer avec Whisper</>)}
+                    ) : (<>&#127908; Transcrire avec IA</>)}
                   </button>
                 </div>
               )}
