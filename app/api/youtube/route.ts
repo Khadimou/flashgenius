@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
     const msg = err instanceof Error ? err.message : ''
     if (msg.includes('disabled') || msg.includes('no transcript')) {
       return NextResponse.json({
-        error: 'Les sous-titres sont desactives sur cette video. Essaie une autre video ou utilise l'import audio/video (Premium).',
+        error: "Les sous-titres sont desactives sur cette video. Essaie une autre video ou utilise l'import audio/video (Premium).",
       }, { status: 422 })
     }
     console.error('youtube-transcript:', err)
