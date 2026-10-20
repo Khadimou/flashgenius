@@ -2,17 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import ytdl from '@distube/ytdl-core'
-import OpenAI from 'openai'
-import { toFile } from 'openai'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-
-const MAX_SIZE = 25 * 1024 * 1024
-const MAX_DURATION_SEC = 15 * 60
+const SUPADATA_BASE = 'https://api.supadata.ai/v1'
 
 function extractVideoId(input: string): string | null {
   const patterns = [
@@ -35,6 +29,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Fonctionnalite premium', premium: false }, { status: 403 })
   }
 
+  const apiKey = process.env.SUPADATA_API_KEY
+  if (!apiKey) {
+    return NextResponse.json({ error: 'Service de transcription non configure' }, { status: 500 })
+  }
+
   const { url } = await req.json()
   if (!url?.trim()) return NextResponse.json({ error: 'URL manquante' }, { status: 400 })
 
@@ -44,65 +43,47 @@ export async function POST(req: NextRequest) {
   }
 
   const videoUrl = `https://www.youtube.com/watch?v=${videoId}`
+  const params = new URLSearchParams({
+    url: videoUrl,
+    lang: 'fr',
+    text: 'true',
+    mode: 'generate',
+  })
 
   try {
-    const info = await ytdl.getInfo(videoUrl)
-    const lengthSec = parseInt(info.videoDetails.lengthSeconds, 10) || 0
-
-    if (lengthSec > MAX_DURATION_SEC) {
-      return NextResponse.json({
-        error: `Video trop longue (${Math.round(lengthSec / 60)} min). Maximum 15 min pour la transcription Whisper.`,
-      }, { status: 422 })
-    }
-
-    const audioFormats = ytdl.filterFormats(info.formats, 'audioonly')
-    if (!audioFormats.length) {
-      return NextResponse.json({ error: 'Aucun flux audio disponible pour cette video.' }, { status: 422 })
-    }
-    const format = audioFormats.sort((a, b) => (a.bitrate || 0) - (b.bitrate || 0))[0]
-
-    const chunks: Buffer[] = []
-    let total = 0
-    const stream = ytdl.downloadFromInfo(info, { format })
-
-    await new Promise<void>((resolve, reject) => {
-      stream.on('data', (chunk: Buffer) => {
-        total += chunk.length
-        if (total > MAX_SIZE) {
-          stream.destroy()
-          reject(new Error('TOO_LARGE'))
-          return
-        }
-        chunks.push(chunk)
-      })
-      stream.on('end', () => resolve())
-      stream.on('error', (e) => reject(e))
+    const res = await fetch(`${SUPADATA_BASE}/transcript?${params}`, {
+      headers: { 'x-api-key': apiKey },
     })
 
-    const buffer = Buffer.concat(chunks)
-    const ext = format.container || 'm4a'
-    const mime = format.mimeType?.split(';')[0] || 'audio/mp4'
-    const openaiFile = await toFile(buffer, `youtube.${ext}`, { type: mime })
+    if (res.status === 202) {
+      const data = await res.json()
+      return NextResponse.json({ jobId: data.jobId, status: 'queued' })
+    }
 
-    const transcription = await openai.audio.transcriptions.create({
-      file: openaiFile,
-      model: 'whisper-1',
-      language: 'fr',
-      response_format: 'text',
-    })
+    if (!res.ok) {
+      const errText = await res.text()
+      console.error('supadata error:', res.status, errText)
+      if (res.status === 403) {
+        return NextResponse.json({ error: 'Video restreinte ou privee.' }, { status: 422 })
+      }
+      if (res.status === 404) {
+        return NextResponse.json({ error: 'Video introuvable.' }, { status: 422 })
+      }
+      if (res.status === 429) {
+        return NextResponse.json({ error: 'Quota Supadata atteint. Reessaie plus tard.' }, { status: 429 })
+      }
+      return NextResponse.json({ error: 'Erreur du service de transcription.' }, { status: 500 })
+    }
 
-    const transcript = String(transcription).trim()
+    const data = await res.json()
+    const transcript = (data.content || '').trim()
     if (transcript.length < 50) {
       return NextResponse.json({ error: 'Transcription trop courte pour generer des flashcards.' }, { status: 422 })
     }
 
-    return NextResponse.json({ transcript, videoId, length: transcript.length, title: info.videoDetails.title })
+    return NextResponse.json({ transcript, videoId, length: transcript.length })
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err)
-    if (msg === 'TOO_LARGE') {
-      return NextResponse.json({ error: 'Audio trop volumineux (>25 MB). Essaie une video plus courte.' }, { status: 422 })
-    }
     console.error('youtube-whisper:', err)
-    return NextResponse.json({ error: "Impossible de telecharger l'audio de cette video. Elle est peut-etre privee ou restreinte." }, { status: 500 })
+    return NextResponse.json({ error: 'Impossible de transcrire cette video.' }, { status: 500 })
   }
 }

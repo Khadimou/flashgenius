@@ -158,7 +158,27 @@ export default function GeneratePage() {
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error ?? 'Erreur Whisper'); return }
-      setText(data.transcript)
+
+      let transcript: string | null = data.transcript ?? null
+
+      // Async job: poll until completed
+      if (!transcript && data.jobId) {
+        const jobId = data.jobId as string
+        const started = Date.now()
+        const MAX_WAIT = 3 * 60 * 1000 // 3 min
+        while (Date.now() - started < MAX_WAIT) {
+          await new Promise((r) => setTimeout(r, 2500))
+          const pr = await fetch(`/api/youtube/whisper/job/${jobId}`)
+          const pd = await pr.json()
+          if (!pr.ok) { setError(pd.error ?? 'Erreur polling'); return }
+          if (pd.status === 'completed') { transcript = pd.transcript; break }
+          if (pd.status === 'failed') { setError(pd.error ?? 'Transcription echouee'); return }
+        }
+        if (!transcript) { setError('Transcription trop longue (>3 min). Reessaie plus tard.'); return }
+      }
+
+      if (!transcript) { setError('Pas de transcription recue'); return }
+      setText(transcript)
       setShowYtInput(false)
       setYtUrl('')
       setYtWhisperAvailable(false)
