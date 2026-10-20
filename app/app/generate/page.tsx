@@ -27,6 +27,8 @@ export default function GeneratePage() {
   const [showYtInput, setShowYtInput] = useState(false)
   const [ytUrl, setYtUrl] = useState('')
   const [fetchingYt, setFetchingYt] = useState(false)
+  const [ytWhisperAvailable, setYtWhisperAvailable] = useState(false)
+  const [whisperingYt, setWhisperingYt] = useState(false)
   const [usageCount, setUsageCount] = useState<number | null>(null)
   const [usageLimit, setUsageLimit] = useState<number | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -125,14 +127,45 @@ export default function GeneratePage() {
         body: JSON.stringify({ url: ytUrl.trim() }),
       })
       const data = await res.json()
-      if (!res.ok) { setError(data.error ?? 'Erreur'); return }
+      if (!res.ok) {
+        setError(data.error ?? 'Erreur')
+        const msg = (data.error ?? '').toLowerCase()
+        if (isPremium && (msg.includes('sous-titre') || msg.includes('transcription trop courte'))) {
+          setYtWhisperAvailable(true)
+        }
+        return
+      }
       setText(data.transcript)
       setShowYtInput(false)
       setYtUrl('')
+      setYtWhisperAvailable(false)
     } catch {
       setError('Connexion impossible')
     } finally {
       setFetchingYt(false)
+    }
+  }
+
+  async function handleYoutubeWhisper() {
+    if (!ytUrl.trim() || whisperingYt) return
+    setWhisperingYt(true)
+    setError('')
+    try {
+      const res = await fetch('/api/youtube/whisper', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: ytUrl.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setError(data.error ?? 'Erreur Whisper'); return }
+      setText(data.transcript)
+      setShowYtInput(false)
+      setYtUrl('')
+      setYtWhisperAvailable(false)
+    } catch {
+      setError('Connexion impossible')
+    } finally {
+      setWhisperingYt(false)
     }
   }
 
@@ -307,6 +340,25 @@ export default function GeneratePage() {
               <p className="w-full text-xs text-red-500/70 dark:text-red-400/60">
                 Fonctionne avec les videos ayant des sous-titres (auto ou manuels).
               </p>
+              {ytWhisperAvailable && (
+                <div className="w-full flex items-center gap-2 pt-2 border-t border-red-200/50 dark:border-red-500/20">
+                  <p className="flex-1 text-xs text-amber-600 dark:text-amber-400">
+                    Pas de sous-titres ? Transcris l'audio avec Whisper (Premium, max 15 min).
+                  </p>
+                  <button onClick={handleYoutubeWhisper} disabled={whisperingYt}
+                    className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-amber-500 hover:bg-amber-400 disabled:opacity-40 transition-colors flex items-center gap-2">
+                    {whisperingYt ? (
+                      <>
+                        <svg className="animate-spin h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                        </svg>
+                        Transcription...
+                      </>
+                    ) : (<>&#127908; Essayer avec Whisper</>)}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
