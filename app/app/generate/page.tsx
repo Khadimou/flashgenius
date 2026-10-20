@@ -310,7 +310,7 @@ export default function GeneratePage() {
             </div>
           )}
 
-          {/* Usage counter */}}
+          {/* Usage counter */}
           {usageLimit !== null && usageCount !== null && (
             <div className="flex items-center gap-2">
               <div className="flex-1 h-1.5 rounded-full bg-gray-100 dark:bg-white/10 overflow-hidden max-w-[180px]">
