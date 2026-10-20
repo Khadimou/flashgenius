@@ -62,6 +62,6 @@ export async function POST(req: NextRequest) {
       }, { status: 422 })
     }
     console.error('youtube-transcript:', err)
-    return NextResponse.json({ error: 'Impossible de recuperer les sous-titres. Verifie l'URL et reessaie.' }, { status: 500 })
+    return NextResponse.json({ error: "Impossible de recuperer les sous-titres. Verifie l'URL et reessaie." }, { status: 500 })
   }
 }
