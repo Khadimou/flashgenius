@@ -29,6 +29,9 @@ export default function GeneratePage() {
   const [fetchingYt, setFetchingYt] = useState(false)
   const [ytWhisperAvailable, setYtWhisperAvailable] = useState(false)
   const [whisperingYt, setWhisperingYt] = useState(false)
+  const [showTranslate, setShowTranslate] = useState(false)
+  const [translating, setTranslating] = useState(false)
+  const [customLang, setCustomLang] = useState('')
   const [usageCount, setUsageCount] = useState<number | null>(null)
   const [usageLimit, setUsageLimit] = useState<number | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -189,6 +192,29 @@ export default function GeneratePage() {
     }
   }
 
+  async function handleTranslate(lang: string) {
+    const target = lang.trim()
+    if (!target || !text.trim() || translating) return
+    setTranslating(true)
+    setError('')
+    try {
+      const res = await fetch('/api/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: text.trim(), targetLang: target }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setError(data.error ?? 'Erreur traduction'); return }
+      setText(data.translated)
+      setShowTranslate(false)
+      setCustomLang('')
+    } catch {
+      setError('Connexion impossible')
+    } finally {
+      setTranslating(false)
+    }
+  }
+
   function handleVideoBtnClick() {
     if (isPremium === false) {
       setShowPremiumGate(true)
@@ -266,6 +292,33 @@ export default function GeneratePage() {
             </div>
           </div>
 
+          {/* Translate panel */}
+          {showTranslate && text.trim().length > 50 && (
+            <div className="flex items-center gap-2 flex-wrap p-3 rounded-xl bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/20">
+              <span className="text-xs font-medium text-violet-700 dark:text-violet-300 shrink-0">Traduire vers :</span>
+              {[['fr', 'Français'], ['en', 'English'], ['es', 'Español'], ['de', 'Deutsch'], ['ar', 'عربي'], ['pt', 'Português']].map(([code, label]) => (
+                <button key={code} onClick={() => handleTranslate(code)} disabled={translating}
+                  className="px-3 py-1 rounded-lg text-xs font-medium border border-violet-300 dark:border-violet-500/40 text-violet-700 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-500/20 disabled:opacity-40 transition-colors">
+                  {label}
+                </button>
+              ))}
+              <div className="flex items-center gap-1.5 ml-auto">
+                <input
+                  value={customLang}
+                  onChange={(e) => setCustomLang(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleTranslate(customLang)}
+                  placeholder="Autre langue..."
+                  className="w-28 px-2.5 py-1 rounded-lg text-xs bg-white dark:bg-white/5 border border-violet-200 dark:border-violet-500/20 text-gray-700 dark:text-white placeholder-gray-400 dark:placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-violet-400"
+                />
+                <button onClick={() => handleTranslate(customLang)} disabled={!customLang.trim() || translating}
+                  className="px-3 py-1 rounded-lg text-xs font-medium bg-violet-600 text-white hover:bg-violet-500 disabled:opacity-40 transition-colors">
+                  {translating ? '...' : 'OK'}
+                </button>
+              </div>
+              <button onClick={() => setShowTranslate(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-white ml-1 shrink-0">&#10005;</button>
+            </div>
+          )}
+
           <div className="flex items-center gap-3 flex-wrap">
             <button onClick={generate}
               disabled={text.trim().length < MIN || generating || transcribing}
@@ -314,6 +367,14 @@ export default function GeneratePage() {
             <input ref={videoRef} type="file"
               accept=".mp4,.mp3,.m4a,.wav,.webm,.mpeg,.mpga,.ogg,video/*,audio/*"
               onChange={handleVideo} className="hidden" />
+
+            {text.trim().length > 50 && (
+              <button
+                onClick={() => setShowTranslate((v) => !v)}
+                className="px-4 py-2.5 rounded-xl text-sm font-semibold border border-violet-300 dark:border-violet-500/40 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-500/10 transition-colors flex items-center gap-1.5 shrink-0">
+                &#127758; Traduire
+              </button>
+            )}
 
             {/* YouTube URL button */}
             <button onClick={() => { setShowYtInput((v) => !v); setError('') }}
