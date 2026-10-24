@@ -419,12 +419,12 @@ export default function GeneratePage() {
                 ✕
               </button>
               <p className="w-full text-xs text-red-500/70 dark:text-red-400/60">
-                Fonctionne avec les videos ayant des sous-titres (auto ou manuels).
+                Gratuit pour les videos avec sous-titres (auto ou manuels). Videos publiques uniquement.
               </p>
               {ytWhisperAvailable && (
                 <div className="w-full flex items-center gap-2 pt-2 border-t border-red-200/50 dark:border-red-500/20">
                   <p className="flex-1 text-xs text-amber-600 dark:text-amber-400">
-                    Pas de sous-titres ? L'IA transcrit l'audio automatiquement (Premium).
+                    Pas de sous-titres ? L'IA transcrit l'audio (Premium, jusqu'a 3 min d'attente).
                   </p>
                   <button onClick={handleYoutubeWhisper} disabled={whisperingYt}
                     className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-amber-500 hover:bg-amber-400 disabled:opacity-40 transition-colors flex items-center gap-2">
@@ -442,6 +442,21 @@ export default function GeneratePage() {
               )}
             </div>
           )}
+
+          {/* Import limits */}
+          <details className="group rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50/60 dark:bg-white/[0.02] text-xs text-gray-500 dark:text-white/50">
+            <summary className="cursor-pointer select-none px-4 py-2.5 font-medium text-gray-600 dark:text-white/60">
+              &#8505;&#65039; Limites des imports (fichiers, audio, video, YouTube)
+            </summary>
+            <ul className="px-4 pb-3 pt-1 space-y-1.5 list-disc list-inside">
+              <li><strong>Texte</strong> : 30&nbsp;000 caracteres maximum, 50 minimum.</li>
+              <li><strong>Fichier .txt / .md</strong> : texte brut uniquement.</li>
+              <li><strong>Video / Audio (Premium)</strong> : mp4, mp3, m4a, wav, webm, mpeg, ogg &middot; 25&nbsp;Mo maximum par fichier (environ 25 min d&apos;audio en mp3).</li>
+              <li><strong>YouTube avec sous-titres</strong> : gratuit, tous les comptes.</li>
+              <li><strong>YouTube sans sous-titres (Premium)</strong> : transcription par IA, de quelques dizaines de secondes a 3 minutes d&apos;attente selon la duree. Videos publiques uniquement : pas de video privee, avec restriction d&apos;age, reservee aux membres, ni de live en cours.</li>
+              <li>La transcription est dans la langue parlee de la video : utilise <strong>Traduire</strong> ensuite.</li>
+            </ul>
+          </details>
 
           {/* Usage counter */}
           {usageLimit !== null && usageCount !== null && (
