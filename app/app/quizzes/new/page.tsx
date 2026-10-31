@@ -9,7 +9,7 @@ interface DeckOpt { id: string; name: string }
 
 export default function NewQuizPage() {
   const router = useRouter()
-  const [source, setSource] = useState<"text" | "deck" | "import">("text")
+  const [source, setSource] = useState<"manual" | "text" | "deck" | "import">("manual")
   const [notice, setNotice] = useState("")
   const [text, setText] = useState("")
   const [decks, setDecks] = useState<DeckOpt[]>([])
@@ -82,7 +82,7 @@ export default function NewQuizPage() {
     }
   }
 
-  const canGenerate = source === "deck" ? !!deckId : source === "import" ? text.trim().length >= 30 : text.trim().length >= 100
+  const canGenerate = source === "manual" ? false : source === "deck" ? !!deckId : source === "import" ? text.trim().length >= 30 : text.trim().length >= 100
 
   if (isTeacher === false) {
     return (
@@ -101,8 +101,8 @@ export default function NewQuizPage() {
       </div>
 
       <div className="p-5 rounded-2xl bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.07] space-y-4">
-        <div className="flex gap-2">
-          {([["text", "Generer depuis un texte"], ["deck", "Depuis un de mes decks"], ["import", "Importer mes questions"]] as const).map(([k, label]) => (
+        <div className="flex gap-2 flex-wrap">
+          {([["manual", "Saisir mes questions"], ["text", "Generer depuis un texte"], ["deck", "Depuis un de mes decks"], ["import", "Importer mes questions"]] as const).map(([k, label]) => (
             <button key={k} onClick={() => setSource(k)}
               className={"px-4 py-2 rounded-xl text-sm font-medium border transition-colors " + (source === k
                 ? "bg-violet-600 text-white border-violet-600"
@@ -112,7 +112,9 @@ export default function NewQuizPage() {
           ))}
         </div>
 
-        {source === "import" ? (
+        {source === "manual" ? (
+          <p className="text-sm text-gray-500 dark:text-white/50">Saisis ta question, remplis les reponses possibles et coche celles qui sont correctes. Active &quot;Plusieurs bonnes reponses&quot; si besoin. Aucun quota consomme.</p>
+        ) : source === "import" ? (
           <div>
             <textarea value={text} onChange={(e) => setText(e.target.value)} rows={12}
               placeholder={"Colle une ou plusieurs questions telles quelles : enonce, options A/B/C/D, bonne reponse, justifications...\nLes mentions parasites (Learn more, Selectionne...) sont ignorees. Le texte n'est pas reformule."}
@@ -134,7 +136,7 @@ export default function NewQuizPage() {
           </select>
         )}
 
-        <div className="flex items-center gap-3 flex-wrap">
+        {source !== "manual" && <div className="flex items-center gap-3 flex-wrap">
           {source !== "import" && (<>
             <label className="text-sm text-gray-600 dark:text-white/60">Nombre de questions</label>
             <input type="number" min={3} max={30} value={count}
@@ -145,14 +147,14 @@ export default function NewQuizPage() {
             className="ml-auto px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 disabled:opacity-40 transition-all">
             {source === "import" ? (generating ? "Analyse..." : "\uD83D\uDCE5 Importer ces questions") : generating ? "Generation..." : questions.length ? "Regenerer" : "\u26A1 Generer le QCM"}
           </button>
-        </div>
-        {source !== "import" && <p className="text-xs text-gray-400">Une generation compte dans ton quota mensuel (partage avec les flashcards). Tu pourras tout modifier avant de publier.</p>}
+        </div>}
+        {source !== "import" && source !== "manual" && <p className="text-xs text-gray-400">Une generation compte dans ton quota mensuel (partage avec les flashcards). Tu pourras tout modifier avant de publier.</p>}
       </div>
 
       {error && <p className="text-sm text-red-500">{error}</p>}
       {notice && <p className="text-sm text-emerald-600 dark:text-emerald-400">{notice}</p>}
 
-      {questions.length > 0 && (
+      {(source === "manual" || questions.length > 0) && (
         <>
           <div className="p-5 rounded-2xl bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.07] space-y-3">
             <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titre du QCM"
@@ -169,6 +171,12 @@ export default function NewQuizPage() {
           </div>
 
           <QuizEditor questions={questions} onChange={setQuestions} />
+          {questions.length === 0 && (
+            <button onClick={() => setQuestions([{ question: "", options: ["", "", "", ""], correctIndices: [0], explanation: "", optionExplanations: ["", "", "", ""] }])}
+              className="w-full py-3 rounded-xl border border-dashed border-violet-400 text-sm font-medium text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-500/10">
+              + Ajouter une question
+            </button>
+          )}
 
           <div className="flex items-center gap-4 flex-wrap sticky bottom-20 md:bottom-4 p-4 rounded-2xl bg-white/90 dark:bg-[#0c0c1d]/90 backdrop-blur border border-gray-200 dark:border-white/10">
             <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-white/70">
