@@ -171,12 +171,6 @@ export default function NewQuizPage() {
           </div>
 
           <QuizEditor questions={questions} onChange={setQuestions} />
-          {questions.length === 0 && (
-            <button onClick={() => setQuestions([{ question: "", options: ["", "", "", ""], correctIndices: [0], explanation: "", optionExplanations: ["", "", "", ""] }])}
-              className="w-full py-3 rounded-xl border border-dashed border-violet-400 text-sm font-medium text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-500/10">
-              + Ajouter une question
-            </button>
-          )}
 
           <div className="flex items-center gap-4 flex-wrap sticky bottom-20 md:bottom-4 p-4 rounded-2xl bg-white/90 dark:bg-[#0c0c1d]/90 backdrop-blur border border-gray-200 dark:border-white/10">
             <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-white/70">
