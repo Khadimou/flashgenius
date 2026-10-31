@@ -12,6 +12,7 @@ const NAV = [
   { href:'/app/generate', label:'Generer', icon:'⚡', exact:false },
   { href:'/app/library', label:'Bibliotheque', icon:'📚', exact:false },
   { href:'/app/courses', label:'Cours', icon:'🎓', exact:false },
+  { href:'/app/quizzes', label:'QCM', icon:'📝', exact:false },
   { href:'/app/sr', label:'Revision SR', icon:'🧠', exact:false },
 ]
 
