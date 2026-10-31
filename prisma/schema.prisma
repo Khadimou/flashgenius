@@ -147,6 +147,7 @@ model QuizQuestion {
   correctIndex Int
   explanation  String? @db.Text
   optionExplanations Json?
+  correctIndices     Json?
   position     Int     @default(0)
   quiz         Quiz    @relation(fields: [quizId], references: [id], onDelete: Cascade)
 }

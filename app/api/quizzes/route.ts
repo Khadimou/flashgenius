@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
       title, userId, deckId, published: !!body.published,
       questions: {
         create: questions.map((q, i) => ({
-          question: q.question, options: q.options, correctIndex: q.correctIndex,
+          question: q.question, options: q.options, correctIndex: q.correctIndices[0], correctIndices: q.correctIndices,
           explanation: q.explanation || null,
           optionExplanations: q.optionExplanations.some(Boolean) ? q.optionExplanations : undefined,
           position: i,

@@ -22,16 +22,28 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   if (!Array.isArray(answers) || answers.length !== quiz.questions.length) {
     return NextResponse.json({ error: 'Reponses invalides' }, { status: 400 })
   }
-  const chosen = answers.map((a: unknown) => (Number.isInteger(a) ? (a as number) : -1))
 
-  const corrections = quiz.questions.map((q, i) => ({
-    questionId: q.id,
-    chosen: chosen[i],
-    correctIndex: q.correctIndex,
-    isCorrect: chosen[i] === q.correctIndex,
-    explanation: q.explanation ?? '',
-    optionExplanations: Array.isArray(q.optionExplanations) ? (q.optionExplanations as string[]) : [],
-  }))
+  // Each answer = array of selected option indexes (a bare number is accepted for single answers)
+  const chosen: number[][] = answers.map((a: unknown, i: number) => {
+    const nOpts = (quiz.questions[i].options as string[]).length
+    const arr = Array.isArray(a) ? a : Number.isInteger(a) && (a as number) >= 0 ? [a] : []
+    return Array.from(new Set(arr.filter((n: unknown): n is number => Number.isInteger(n) && (n as number) >= 0 && (n as number) < nOpts))).sort((x, y) => x - y)
+  })
+
+  const corrections = quiz.questions.map((q, i) => {
+    const correctIndices = Array.isArray(q.correctIndices) && q.correctIndices.length
+      ? (q.correctIndices as number[]) : [q.correctIndex]
+    const good = [...correctIndices].sort((x, y) => x - y)
+    return {
+      questionId: q.id,
+      chosen: chosen[i],
+      correctIndices: good,
+      // all-or-nothing: exactly the right set
+      isCorrect: chosen[i].length === good.length && chosen[i].every((v, k) => v === good[k]),
+      explanation: q.explanation ?? '',
+      optionExplanations: Array.isArray(q.optionExplanations) ? (q.optionExplanations as string[]) : [],
+    }
+  })
   const score = corrections.filter((c) => c.isCorrect).length
 
   // Teacher previews are not recorded in the stats

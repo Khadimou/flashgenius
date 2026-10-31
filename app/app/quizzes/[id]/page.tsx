@@ -14,10 +14,10 @@ interface OwnerData {
 }
 interface StudentData {
   isOwner: false
-  quiz: { id: string; title: string; teacher: string | null; deckName: string | null; questions: { id: string; question: string; options: string[] }[] }
+  quiz: { id: string; title: string; teacher: string | null; deckName: string | null; questions: { id: string; question: string; options: string[]; selectCount: number }[] }
   myAttempts: { score: number; total: number; createdAt: string }[]
 }
-interface Correction { questionId: string; chosen: number; correctIndex: number; isCorrect: boolean; explanation: string; optionExplanations: string[] }
+interface Correction { questionId: string; chosen: number[]; correctIndices: number[]; isCorrect: boolean; explanation: string; optionExplanations: string[] }
 interface Result { score: number; total: number; corrections: Correction[] }
 
 const LETTERS = "ABCDEF"
@@ -27,7 +27,7 @@ export default function QuizDetailPage() {
   const router = useRouter()
   const [data, setData] = useState<OwnerData | StudentData | null>(null)
   const [notFound, setNotFound] = useState(false)
-  const [answers, setAnswers] = useState<number[]>([])
+  const [answers, setAnswers] = useState<number[][]>([])
   const [result, setResult] = useState<Result | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
@@ -43,14 +43,14 @@ export default function QuizDetailPage() {
     if (!res.ok) { setNotFound(true); return }
     const d = await res.json()
     setData(d)
-    setAnswers(new Array(d.quiz.questions.length).fill(-1))
+    setAnswers(d.quiz.questions.map(() => []))
     setResult(null)
   }
   useEffect(() => { load() /* eslint-disable-next-line */ }, [id])
 
   async function submit() {
     if (!data) return
-    if (answers.some((a) => a < 0) && !confirm("Certaines questions n'ont pas de reponse. Valider quand meme ?")) return
+    if (answers.some((a) => a.length === 0) && !confirm("Certaines questions n'ont pas de reponse. Valider quand meme ?")) return
     setSubmitting(true)
     setError("")
     try {
@@ -72,7 +72,7 @@ export default function QuizDetailPage() {
 
   function retry() {
     if (!data) return
-    setAnswers(new Array(data.quiz.questions.length).fill(-1))
+    setAnswers(data.quiz.questions.map(() => []))
     setResult(null)
     if (!data.isOwner) load()
   }
@@ -94,7 +94,7 @@ export default function QuizDetailPage() {
 
   function startEdit() {
     if (!data || !data.isOwner) return
-    setDraft(data.quiz.questions.map(({ question, options, correctIndex, explanation, optionExplanations }) => ({ question, options: [...options], correctIndex, explanation, optionExplanations: options.map((_, k) => optionExplanations?.[k] ?? "") })))
+    setDraft(data.quiz.questions.map(({ question, options, correctIndices, explanation, optionExplanations }) => ({ question, options: [...options], correctIndices: [...correctIndices], explanation, optionExplanations: options.map((_, k) => optionExplanations?.[k] ?? "") })))
     setDraftTitle(data.quiz.title)
     setEditing(true)
     setError("")
@@ -124,7 +124,7 @@ export default function QuizDetailPage() {
   if (notFound) return <div className="max-w-xl mx-auto px-6 py-16 text-center text-gray-500">QCM introuvable. <Link href="/app/quizzes" className="text-violet-500 hover:underline">Retour</Link></div>
   if (!data) return <div className="max-w-3xl mx-auto px-6 py-10 text-sm text-gray-400">Chargement...</div>
 
-  const takeQuiz = (questions: { id: string; question: string; options: string[] }[]) => (
+  const takeQuiz = (questions: { id: string; question: string; options: string[]; selectCount?: number }[]) => (
     <div className="space-y-4">
       {result && (
         <div className="p-5 rounded-2xl bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/20 text-center">
@@ -135,26 +135,35 @@ export default function QuizDetailPage() {
       )}
       {questions.map((q, i) => {
         const corr = result?.corrections[i]
+        const need = q.selectCount ?? 1
+        const toggle = (j: number) => setAnswers((a) => a.map((v, k) => {
+          if (k !== i) return v
+          if (need <= 1) return [j]
+          return v.includes(j) ? v.filter((x) => x !== j) : [...v, j]
+        }))
         return (
           <div key={q.id} className="p-4 rounded-2xl bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.07] space-y-3">
             <p className="font-medium text-gray-900 dark:text-white"><span className="text-violet-600 dark:text-violet-400 font-bold mr-2">{i + 1}.</span>{q.question}</p>
+            {need > 1 && !corr && (
+              <p className="text-xs font-medium text-amber-600 dark:text-amber-400">Choisissez {need} reponses ({answers[i]?.length ?? 0}/{need} selectionnee{(answers[i]?.length ?? 0) > 1 ? "s" : ""})</p>
+            )}
             <div className="space-y-2">
               {q.options.map((o, j) => {
-                const selected = answers[i] === j
+                const selected = corr ? corr.chosen.includes(j) : (answers[i] ?? []).includes(j)
                 let cls = "border-gray-200 dark:border-white/10 hover:border-violet-400"
                 if (corr) {
-                  if (j === corr.correctIndex) cls = "border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10"
+                  if (corr.correctIndices.includes(j)) cls = "border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10"
                   else if (selected) cls = "border-red-400 bg-red-50 dark:bg-red-500/10"
                   else cls = "border-gray-200 dark:border-white/10 opacity-60"
                 } else if (selected) cls = "border-violet-500 bg-violet-50 dark:bg-violet-500/10"
                 const just = corr?.optionExplanations?.[j]
                 return (
                   <div key={j}>
-                    <button disabled={!!result} onClick={() => setAnswers((a) => a.map((v, k) => (k === i ? j : v)))}
+                    <button disabled={!!result} onClick={() => toggle(j)}
                       className={"w-full text-left px-4 py-2.5 rounded-xl border text-sm text-gray-800 dark:text-white/85 transition-colors " + cls}>
                       <span className="font-bold mr-2 text-gray-400">{LETTERS[j]}</span>{o}
-                      {corr && j === corr.correctIndex && <span className="ml-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">Bonne reponse</span>}
-                      {corr && selected && j !== corr.correctIndex && <span className="ml-2 text-xs font-semibold text-red-500">Ta reponse</span>}
+                      {corr && corr.correctIndices.includes(j) && <span className="ml-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">Bonne reponse</span>}
+                      {corr && selected && !corr.correctIndices.includes(j) && <span className="ml-2 text-xs font-semibold text-red-500">Ta reponse</span>}
                     </button>
                     {just && <p className="text-xs text-gray-500 dark:text-white/50 px-4 pt-1">{just}</p>}
                   </div>
@@ -167,10 +176,13 @@ export default function QuizDetailPage() {
           </div>
         )
       })}
+      {!result && questions.some((q) => (q.selectCount ?? 1) > 1) && (
+        <p className="text-xs text-gray-400">Questions a reponses multiples : la question est comptee juste uniquement si tu coches exactement toutes les bonnes reponses.</p>
+      )}
       {!result && (
         <button onClick={submit} disabled={submitting}
           className="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 disabled:opacity-40 transition-all">
-          {submitting ? "Correction..." : "Valider mes reponses (" + answers.filter((a) => a >= 0).length + "/" + questions.length + ")"}
+          {submitting ? "Correction..." : "Valider mes reponses (" + answers.filter((a) => a.length > 0).length + "/" + questions.length + ")"}
         </button>
       )}
       {error && <p className="text-sm text-red-500">{error}</p>}
@@ -262,14 +274,15 @@ export default function QuizDetailPage() {
               <div key={q.id} className="p-4 rounded-2xl bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.07] space-y-2">
                 <div className="flex items-start justify-between gap-3">
                   <p className="font-medium text-gray-900 dark:text-white"><span className="text-violet-600 dark:text-violet-400 font-bold mr-2">{i + 1}.</span>{q.question}</p>
+                  {q.correctIndices.length > 1 && <span className="shrink-0 text-xs text-amber-600 dark:text-amber-400">{q.correctIndices.length} reponses</span>}
                   {pq?.percentCorrect !== null && pq?.percentCorrect !== undefined && (
                     <span className="shrink-0 text-xs text-gray-500">{pq.percentCorrect}% reussite</span>
                   )}
                 </div>
                 <ul className="text-sm space-y-1">
                   {q.options.map((o, j) => (
-                    <li key={j} className={j === q.correctIndex ? "text-emerald-600 dark:text-emerald-400 font-medium" : "text-gray-600 dark:text-white/60"}>
-                      {LETTERS[j]}. {o}{j === q.correctIndex ? " \u2713" : ""}
+                    <li key={j} className={q.correctIndices.includes(j) ? "text-emerald-600 dark:text-emerald-400 font-medium" : "text-gray-600 dark:text-white/60"}>
+                      {LETTERS[j]}. {o}{q.correctIndices.includes(j) ? " \u2713" : ""}
                       {q.optionExplanations?.[j] && <span className="block text-xs font-normal text-gray-500 dark:text-white/40">{q.optionExplanations[j]}</span>}
                     </li>
                   ))}
@@ -301,7 +314,7 @@ export default function QuizDetailPage() {
       ) : (
         <div className="space-y-3">
           <p className="text-xs text-gray-400">Apercu comme un eleve. Tes reponses ne sont pas enregistrees dans les statistiques.</p>
-          {takeQuiz(quiz.questions)}
+          {takeQuiz(quiz.questions.map((q) => ({ id: q.id, question: q.question, options: q.options, selectCount: q.correctIndices.length })))}
         </div>
       )}
     </div>

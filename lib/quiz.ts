@@ -3,7 +3,7 @@ import { openai } from '@/lib/openai'
 export interface QuizQuestionDraft {
   question: string
   options: string[]
-  correctIndex: number
+  correctIndices: number[]
   explanation: string
   optionExplanations: string[]
 }
@@ -20,7 +20,7 @@ function shuffleQuestion(q: QuizQuestionDraft): QuizQuestionDraft {
     ...q,
     options: idx.map((i) => q.options[i]),
     optionExplanations: idx.map((i) => q.optionExplanations[i] ?? ''),
-    correctIndex: idx.indexOf(q.correctIndex),
+    correctIndices: q.correctIndices.map((c) => idx.indexOf(c)).sort((a, b) => a - b),
   }
 }
 
@@ -31,8 +31,9 @@ function sanitizeOne(raw: unknown): QuizQuestionDraft | null {
   const question = typeof r.question === 'string' ? r.question.trim() : ''
   const rawOpts = Array.isArray(r.options) ? r.options : []
   const rawExp = Array.isArray(r.optionExplanations) ? r.optionExplanations : []
-  const correctRaw = Number(r.correctIndex)
-  if (!question || !Number.isInteger(correctRaw) || correctRaw < 0 || correctRaw >= rawOpts.length) return null
+  const rawCorrect: unknown[] = Array.isArray(r.correctIndices) ? r.correctIndices : [r.correctIndex]
+  const correctRaw = Array.from(new Set(rawCorrect.map(Number))).filter((n) => Number.isInteger(n) && n >= 0 && n < rawOpts.length)
+  if (!question || correctRaw.length === 0) return null
 
   const pairs = rawOpts
     .map((o, i) => ({
@@ -41,14 +42,14 @@ function sanitizeOne(raw: unknown): QuizQuestionDraft | null {
       i,
     }))
     .filter((p) => p.o)
-  const correctIndex = pairs.findIndex((p) => p.i === correctRaw)
-  if (pairs.length < 2 || pairs.length > 6 || correctIndex < 0) return null
+  const correctIndices = correctRaw.map((c) => pairs.findIndex((p) => p.i === c)).sort((a, b) => a - b)
+  if (pairs.length < 2 || pairs.length > 6 || correctIndices.some((c) => c < 0)) return null
 
   return {
     question,
     options: pairs.map((p) => p.o),
     optionExplanations: pairs.map((p) => p.e),
-    correctIndex,
+    correctIndices,
     explanation: typeof r.explanation === 'string' ? r.explanation.trim() : '',
   }
 }
@@ -96,7 +97,7 @@ Regles :
 - Questions fondees uniquement sur le texte, couvrant des parties differentes
 - optionExplanations : pour CHAQUE proposition, une justification courte (1 phrase) expliquant pourquoi elle est correcte ou incorrecte
 - explanation : 1 phrase de synthese sur la bonne reponse
-Retourne UNIQUEMENT un JSON valide : {"questions":[{"question":"...","options":["...","...","...","..."],"correctIndex":0,"explanation":"...","optionExplanations":["...","...","...","..."]}]}`,
+Retourne UNIQUEMENT un JSON valide : {"questions":[{"question":"...","options":["...","...","...","..."],"correctIndices":[0],"explanation":"...","optionExplanations":["...","...","...","..."]}]}`,
       },
       { role: 'user', content: text },
     ],
@@ -123,11 +124,11 @@ Extrais CHAQUE question a choix multiples.
 Regles strictes :
 - Conserve le texte EXACT de l'enonce, des options et des justifications : ne traduis pas, ne reformule pas, ne corrige pas
 - Retire les prefixes de lettre des options ("A.", "B)", ...) et tout bruit d'interface ("Learn more", "Selectionne", "Correct" ...) ainsi que les liens
-- correctIndex = index (base 0) de l'option marquee comme correcte (colonne "Bonne reponse" / "Correct"). Si rien n'est indique, choisis la plus probable
+- correctIndices = tableau des index (base 0) de TOUTES les options marquees comme correctes (colonne "Bonne reponse" / "Correct"). Une question "Choose TWO" / "Choisissez deux reponses" a donc 2 index. Si rien n'est indique, choisis la plus probable
 - optionExplanations = la justification propre a chaque option, dans le meme ordre que options ("" si absente)
 - explanation = justification generale de la question si elle existe, sinon ""
-- Une seule bonne reponse par question
-Retourne UNIQUEMENT un JSON valide : {"questions":[{"question":"...","options":["..."],"correctIndex":0,"explanation":"","optionExplanations":["..."]}]}`,
+- Retire de l'enonce la consigne du type "Choose TWO" seulement si elle est purement decorative ; sinon garde l'enonce exact
+Retourne UNIQUEMENT un JSON valide : {"questions":[{"question":"...","options":["..."],"correctIndices":[0],"explanation":"","optionExplanations":["..."]}]}`,
       },
       { role: 'user', content: text },
     ],

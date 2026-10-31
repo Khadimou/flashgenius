@@ -6,6 +6,18 @@ import { sanitizeQuestions } from '@/lib/quiz'
 
 export const dynamic = 'force-dynamic'
 
+function correctOf(q: { correctIndex: number; correctIndices: unknown }): number[] {
+  return Array.isArray(q.correctIndices) && q.correctIndices.length ? (q.correctIndices as number[]) : [q.correctIndex]
+}
+/** Legacy attempts stored a single number (-1 = unanswered); new ones store number[]. */
+function toChosen(a: unknown): number[] {
+  if (Array.isArray(a)) return a.filter((n): n is number => Number.isInteger(n))
+  return Number.isInteger(a) && (a as number) >= 0 ? [a as number] : []
+}
+function sameSet(a: number[], b: number[]) {
+  return a.length === b.length && [...a].sort().join() === [...b].sort().join()
+}
+
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Non autorise' }, { status: 401 })
@@ -29,19 +41,22 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     })
     const n = quiz.questions.length
     const comparable = attempts.filter((a) => Array.isArray(a.answers) && (a.answers as unknown[]).length === n)
-    const perQuestion = quiz.questions.map((q, i) => ({
-      questionId: q.id,
-      percentCorrect: comparable.length
-        ? Math.round((comparable.filter((a) => (a.answers as number[])[i] === q.correctIndex).length / comparable.length) * 100)
-        : null,
-    }))
+    const perQuestion = quiz.questions.map((q, i) => {
+      const good = correctOf(q)
+      return {
+        questionId: q.id,
+        percentCorrect: comparable.length
+          ? Math.round((comparable.filter((a) => sameSet(toChosen((a.answers as unknown[])[i]), good)).length / comparable.length) * 100)
+          : null,
+      }
+    })
     return NextResponse.json({
       isOwner: true,
       quiz: {
         id: quiz.id, title: quiz.title, published: quiz.published, deck: quiz.deck,
         questions: quiz.questions.map((q) => ({
           id: q.id, question: q.question, options: q.options as string[],
-          correctIndex: q.correctIndex, explanation: q.explanation ?? '',
+          correctIndices: correctOf(q), explanation: q.explanation ?? '',
           optionExplanations: Array.isArray(q.optionExplanations) ? (q.optionExplanations as string[]) : (q.options as string[]).map(() => ''),
         })),
       },
@@ -66,7 +81,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     quiz: {
       id: quiz.id, title: quiz.title, teacher: quiz.user.name ?? quiz.user.email,
       deckName: quiz.deck?.name ?? null,
-      questions: quiz.questions.map((q) => ({ id: q.id, question: q.question, options: q.options as string[] })),
+      questions: quiz.questions.map((q) => ({ id: q.id, question: q.question, options: q.options as string[], selectCount: correctOf(q).length })),
     },
     myAttempts: mine,
   })
@@ -110,7 +125,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       await tx.quizQuestion.createMany({
         data: questions.map((q, i) => ({
           quizId: quiz.id, question: q.question, options: q.options,
-          correctIndex: q.correctIndex, explanation: q.explanation || null,
+          correctIndex: q.correctIndices[0], correctIndices: q.correctIndices, explanation: q.explanation || null,
           optionExplanations: q.optionExplanations.some(Boolean) ? q.optionExplanations : undefined,
           position: i,
         })),
