@@ -42,6 +42,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
         questions: quiz.questions.map((q) => ({
           id: q.id, question: q.question, options: q.options as string[],
           correctIndex: q.correctIndex, explanation: q.explanation ?? '',
+          optionExplanations: Array.isArray(q.optionExplanations) ? (q.optionExplanations as string[]) : (q.options as string[]).map(() => ''),
         })),
       },
       attempts: attempts.map((a) => ({
@@ -109,7 +110,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       await tx.quizQuestion.createMany({
         data: questions.map((q, i) => ({
           quizId: quiz.id, question: q.question, options: q.options,
-          correctIndex: q.correctIndex, explanation: q.explanation || null, position: i,
+          correctIndex: q.correctIndex, explanation: q.explanation || null,
+          optionExplanations: q.optionExplanations.some(Boolean) ? q.optionExplanations : undefined,
+          position: i,
         })),
       })
     }

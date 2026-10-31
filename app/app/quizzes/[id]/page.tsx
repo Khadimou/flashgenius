@@ -17,7 +17,7 @@ interface StudentData {
   quiz: { id: string; title: string; teacher: string | null; deckName: string | null; questions: { id: string; question: string; options: string[] }[] }
   myAttempts: { score: number; total: number; createdAt: string }[]
 }
-interface Correction { questionId: string; chosen: number; correctIndex: number; isCorrect: boolean; explanation: string }
+interface Correction { questionId: string; chosen: number; correctIndex: number; isCorrect: boolean; explanation: string; optionExplanations: string[] }
 interface Result { score: number; total: number; corrections: Correction[] }
 
 const LETTERS = "ABCDEF"
@@ -94,7 +94,7 @@ export default function QuizDetailPage() {
 
   function startEdit() {
     if (!data || !data.isOwner) return
-    setDraft(data.quiz.questions.map(({ question, options, correctIndex, explanation }) => ({ question, options: [...options], correctIndex, explanation })))
+    setDraft(data.quiz.questions.map(({ question, options, correctIndex, explanation, optionExplanations }) => ({ question, options: [...options], correctIndex, explanation, optionExplanations: options.map((_, k) => optionExplanations?.[k] ?? "") })))
     setDraftTitle(data.quiz.title)
     setEditing(true)
     setError("")
@@ -147,11 +147,17 @@ export default function QuizDetailPage() {
                   else if (selected) cls = "border-red-400 bg-red-50 dark:bg-red-500/10"
                   else cls = "border-gray-200 dark:border-white/10 opacity-60"
                 } else if (selected) cls = "border-violet-500 bg-violet-50 dark:bg-violet-500/10"
+                const just = corr?.optionExplanations?.[j]
                 return (
-                  <button key={j} disabled={!!result} onClick={() => setAnswers((a) => a.map((v, k) => (k === i ? j : v)))}
-                    className={"w-full text-left px-4 py-2.5 rounded-xl border text-sm text-gray-800 dark:text-white/85 transition-colors " + cls}>
-                    <span className="font-bold mr-2 text-gray-400">{LETTERS[j]}</span>{o}
-                  </button>
+                  <div key={j}>
+                    <button disabled={!!result} onClick={() => setAnswers((a) => a.map((v, k) => (k === i ? j : v)))}
+                      className={"w-full text-left px-4 py-2.5 rounded-xl border text-sm text-gray-800 dark:text-white/85 transition-colors " + cls}>
+                      <span className="font-bold mr-2 text-gray-400">{LETTERS[j]}</span>{o}
+                      {corr && j === corr.correctIndex && <span className="ml-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">Bonne reponse</span>}
+                      {corr && selected && j !== corr.correctIndex && <span className="ml-2 text-xs font-semibold text-red-500">Ta reponse</span>}
+                    </button>
+                    {just && <p className="text-xs text-gray-500 dark:text-white/50 px-4 pt-1">{just}</p>}
+                  </div>
                 )
               })}
             </div>
@@ -264,6 +270,7 @@ export default function QuizDetailPage() {
                   {q.options.map((o, j) => (
                     <li key={j} className={j === q.correctIndex ? "text-emerald-600 dark:text-emerald-400 font-medium" : "text-gray-600 dark:text-white/60"}>
                       {LETTERS[j]}. {o}{j === q.correctIndex ? " \u2713" : ""}
+                      {q.optionExplanations?.[j] && <span className="block text-xs font-normal text-gray-500 dark:text-white/40">{q.optionExplanations[j]}</span>}
                     </li>
                   ))}
                 </ul>

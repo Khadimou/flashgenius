@@ -30,6 +30,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     correctIndex: q.correctIndex,
     isCorrect: chosen[i] === q.correctIndex,
     explanation: q.explanation ?? '',
+    optionExplanations: Array.isArray(q.optionExplanations) ? (q.optionExplanations as string[]) : [],
   }))
   const score = corrections.filter((c) => c.isCorrect).length
 

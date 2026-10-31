@@ -9,7 +9,8 @@ interface DeckOpt { id: string; name: string }
 
 export default function NewQuizPage() {
   const router = useRouter()
-  const [source, setSource] = useState<"text" | "deck">("text")
+  const [source, setSource] = useState<"text" | "deck" | "import">("text")
+  const [notice, setNotice] = useState("")
   const [text, setText] = useState("")
   const [decks, setDecks] = useState<DeckOpt[]>([])
   const [deckId, setDeckId] = useState("")
@@ -30,16 +31,20 @@ export default function NewQuizPage() {
 
   async function generate() {
     setError("")
+    setNotice("")
     setGenerating(true)
     try {
-      const res = await fetch("/api/quizzes/generate", {
+      const isImport = source === "import"
+      const res = await fetch(isImport ? "/api/quizzes/import" : "/api/quizzes/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(source === "deck" ? { deckId, count } : { text, count }),
+        body: JSON.stringify(isImport ? { text } : source === "deck" ? { deckId, count } : { text, count }),
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error ?? "Erreur"); return }
-      setQuestions(data.questions)
+      setQuestions(isImport ? [...questions, ...data.questions] : data.questions)
+      if (isImport) setNotice(data.questions.length + " question(s) importee(s)" + (data.skipped ? ", " + data.skipped + " ignoree(s) (format non reconnu)" : "") + ". Verifie les bonnes reponses ci-dessous.")
+      if (isImport) setText("")
       if (!title.trim()) {
         const d = decks.find((x) => x.id === deckId)
         setTitle(source === "deck" && d ? "QCM : " + d.name : "")
@@ -77,7 +82,7 @@ export default function NewQuizPage() {
     }
   }
 
-  const canGenerate = source === "deck" ? !!deckId : text.trim().length >= 100
+  const canGenerate = source === "deck" ? !!deckId : source === "import" ? text.trim().length >= 30 : text.trim().length >= 100
 
   if (isTeacher === false) {
     return (
@@ -97,7 +102,7 @@ export default function NewQuizPage() {
 
       <div className="p-5 rounded-2xl bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.07] space-y-4">
         <div className="flex gap-2">
-          {([["text", "Coller un texte"], ["deck", "Depuis un de mes decks"]] as const).map(([k, label]) => (
+          {([["text", "Generer depuis un texte"], ["deck", "Depuis un de mes decks"], ["import", "Importer mes questions"]] as const).map(([k, label]) => (
             <button key={k} onClick={() => setSource(k)}
               className={"px-4 py-2 rounded-xl text-sm font-medium border transition-colors " + (source === k
                 ? "bg-violet-600 text-white border-violet-600"
@@ -107,7 +112,14 @@ export default function NewQuizPage() {
           ))}
         </div>
 
-        {source === "text" ? (
+        {source === "import" ? (
+          <div>
+            <textarea value={text} onChange={(e) => setText(e.target.value)} rows={12}
+              placeholder={"Colle une ou plusieurs questions telles quelles : enonce, options A/B/C/D, bonne reponse, justifications...\nLes mentions parasites (Learn more, Selectionne...) sont ignorees. Le texte n'est pas reformule."}
+              className="w-full px-4 py-3 rounded-xl bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500/50 resize-none font-mono" />
+            <p className="text-xs text-gray-400 mt-1">Une seule bonne reponse par question. Les questions importees s&apos;ajoutent a celles deja presentes. Pas de quota consomme.</p>
+          </div>
+        ) : source === "text" ? (
           <div>
             <textarea value={text} onChange={(e) => setText(e.target.value)} rows={8}
               placeholder="Colle ton cours ici (minimum 100 caracteres)..."
@@ -123,19 +135,22 @@ export default function NewQuizPage() {
         )}
 
         <div className="flex items-center gap-3 flex-wrap">
-          <label className="text-sm text-gray-600 dark:text-white/60">Nombre de questions</label>
-          <input type="number" min={3} max={30} value={count}
-            onChange={(e) => setCount(Math.min(30, Math.max(3, Number(e.target.value) || 10)))}
-            className="w-20 px-3 py-2 rounded-lg bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-sm text-gray-900 dark:text-white" />
+          {source !== "import" && (<>
+            <label className="text-sm text-gray-600 dark:text-white/60">Nombre de questions</label>
+            <input type="number" min={3} max={30} value={count}
+              onChange={(e) => setCount(Math.min(30, Math.max(3, Number(e.target.value) || 10)))}
+              className="w-20 px-3 py-2 rounded-lg bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-sm text-gray-900 dark:text-white" />
+          </>)}
           <button onClick={generate} disabled={!canGenerate || generating}
             className="ml-auto px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 disabled:opacity-40 transition-all">
-            {generating ? "Generation..." : questions.length ? "Regenerer" : "\u26A1 Generer le QCM"}
+            {source === "import" ? (generating ? "Analyse..." : "\uD83D\uDCE5 Importer ces questions") : generating ? "Generation..." : questions.length ? "Regenerer" : "\u26A1 Generer le QCM"}
           </button>
         </div>
-        <p className="text-xs text-gray-400">Une generation compte dans ton quota mensuel (partage avec les flashcards). Tu pourras tout modifier avant de publier.</p>
+        {source !== "import" && <p className="text-xs text-gray-400">Une generation compte dans ton quota mensuel (partage avec les flashcards). Tu pourras tout modifier avant de publier.</p>}
       </div>
 
       {error && <p className="text-sm text-red-500">{error}</p>}
+      {notice && <p className="text-sm text-emerald-600 dark:text-emerald-400">{notice}</p>}
 
       {questions.length > 0 && (
         <>

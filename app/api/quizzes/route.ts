@@ -92,7 +92,9 @@ export async function POST(req: NextRequest) {
       questions: {
         create: questions.map((q, i) => ({
           question: q.question, options: q.options, correctIndex: q.correctIndex,
-          explanation: q.explanation || null, position: i,
+          explanation: q.explanation || null,
+          optionExplanations: q.optionExplanations.some(Boolean) ? q.optionExplanations : undefined,
+          position: i,
         })),
       },
     },

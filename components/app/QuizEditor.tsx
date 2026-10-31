@@ -5,6 +5,7 @@ export interface QuizQ {
   options: string[]
   correctIndex: number
   explanation: string
+  optionExplanations: string[]
 }
 
 const INPUT = "w-full px-3 py-2 rounded-lg bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
@@ -17,21 +18,26 @@ export default function QuizEditor({ questions, onChange }: { questions: QuizQ[]
     const opts = questions[i].options.map((o, k) => (k === j ? value : o))
     patch(i, { options: opts })
   }
+  function setOptionExp(i: number, j: number, value: string) {
+    const exps = questions[i].options.map((_, k) => (k === j ? value : (questions[i].optionExplanations[k] ?? "")))
+    patch(i, { optionExplanations: exps })
+  }
   function addOption(i: number) {
     if (questions[i].options.length >= 6) return
-    patch(i, { options: [...questions[i].options, ""] })
+    patch(i, { options: [...questions[i].options, ""], optionExplanations: [...questions[i].options.map((_, k) => questions[i].optionExplanations[k] ?? ""), ""] })
   }
   function removeOption(i: number, j: number) {
     const q = questions[i]
     if (q.options.length <= 2) return
     const options = q.options.filter((_, k) => k !== j)
+    const optionExplanations = q.options.map((_, k) => q.optionExplanations[k] ?? "").filter((_, k) => k !== j)
     let correctIndex = q.correctIndex
     if (j === correctIndex) correctIndex = 0
     else if (j < correctIndex) correctIndex -= 1
-    patch(i, { options, correctIndex })
+    patch(i, { options, optionExplanations, correctIndex })
   }
   function addQuestion() {
-    onChange([...questions, { question: "", options: ["", "", "", ""], correctIndex: 0, explanation: "" }])
+    onChange([...questions, { question: "", options: ["", "", "", ""], correctIndex: 0, explanation: "", optionExplanations: ["", "", "", ""] }])
   }
   function removeQuestion(i: number) {
     onChange(questions.filter((_, idx) => idx !== i))
@@ -51,16 +57,21 @@ export default function QuizEditor({ questions, onChange }: { questions: QuizQ[]
 
           <div className="space-y-2 pl-6">
             {q.options.map((o, j) => (
-              <div key={j} className="flex items-center gap-2">
-                <input type="radio" name={"correct-" + i} checked={q.correctIndex === j}
-                  onChange={() => patch(i, { correctIndex: j })}
-                  title="Bonne reponse" className="accent-emerald-500 shrink-0" />
-                <input value={o} onChange={(e) => setOption(i, j, e.target.value)}
-                  placeholder={"Proposition " + String.fromCharCode(65 + j)}
-                  className={INPUT + (q.correctIndex === j ? " !border-emerald-400/60" : "")} />
-                {q.options.length > 2 && (
-                  <button onClick={() => removeOption(i, j)} className="text-gray-300 hover:text-red-500 text-sm shrink-0">&#10005;</button>
-                )}
+              <div key={j} className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <input type="radio" name={"correct-" + i} checked={q.correctIndex === j}
+                    onChange={() => patch(i, { correctIndex: j })}
+                    title="Bonne reponse" className="accent-emerald-500 shrink-0" />
+                  <input value={o} onChange={(e) => setOption(i, j, e.target.value)}
+                    placeholder={"Proposition " + String.fromCharCode(65 + j)}
+                    className={INPUT + (q.correctIndex === j ? " !border-emerald-400/60" : "")} />
+                  {q.options.length > 2 && (
+                    <button onClick={() => removeOption(i, j)} className="text-gray-300 hover:text-red-500 text-sm shrink-0">&#10005;</button>
+                  )}
+                </div>
+                <input value={q.optionExplanations[j] ?? ""} onChange={(e) => setOptionExp(i, j, e.target.value)}
+                  placeholder={"Justification de " + String.fromCharCode(65 + j) + " (optionnel)"}
+                  className="w-full ml-6 max-w-[calc(100%-1.5rem)] px-3 py-1.5 rounded-lg bg-gray-50 dark:bg-white/[0.03] border border-gray-100 dark:border-white/5 text-xs text-gray-600 dark:text-white/60 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-violet-400/50" />
               </div>
             ))}
             <div className="flex items-center justify-between">
@@ -70,7 +81,7 @@ export default function QuizEditor({ questions, onChange }: { questions: QuizQ[]
               <span className="text-[11px] text-gray-400">Le bouton rond = bonne reponse</span>
             </div>
             <input value={q.explanation} onChange={(e) => patch(i, { explanation: e.target.value })}
-              placeholder="Explication affichee apres correction (optionnel)" className={INPUT} />
+              placeholder="Explication generale apres correction (optionnel)" className={INPUT} />
           </div>
         </div>
       ))}
@@ -102,6 +113,7 @@ export function cleanQuestions(qs: QuizQ[]): QuizQ[] {
     return {
       question: q.question.trim(),
       options: keep.map((x) => x.o),
+      optionExplanations: keep.map((x) => (q.optionExplanations[x.idx] ?? "").trim()),
       correctIndex: keep.findIndex((x) => x.idx === q.correctIndex),
       explanation: q.explanation.trim(),
     }
