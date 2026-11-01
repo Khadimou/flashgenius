@@ -131,6 +131,7 @@ model Quiz {
   userId    String
   deckId    String?
   published Boolean        @default(false)
+  translations Json?
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
   user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)

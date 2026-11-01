@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { sanitizeQuestions } from '@/lib/quiz'
+import { Prisma } from '@prisma/client'
+import { sanitizeQuestions, sanitizeTranslations } from '@/lib/quiz'
 
 export const dynamic = 'force-dynamic'
 
@@ -54,6 +55,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       isOwner: true,
       quiz: {
         id: quiz.id, title: quiz.title, published: quiz.published, deck: quiz.deck,
+        translations: quiz.translations ?? {},
         questions: quiz.questions.map((q) => ({
           id: q.id, question: q.question, options: q.options as string[],
           correctIndices: correctOf(q), explanation: q.explanation ?? '',
@@ -79,6 +81,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   return NextResponse.json({
     isOwner: false,
     quiz: {
+      translations: quiz.translations ?? {},
       id: quiz.id, title: quiz.title, teacher: quiz.user.name ?? quiz.user.email,
       deckName: quiz.deck?.name ?? null,
       questions: quiz.questions.map((q) => ({ id: q.id, question: q.question, options: q.options as string[], selectCount: correctOf(q).length })),
@@ -92,11 +95,14 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   if (!session?.user) return NextResponse.json({ error: 'Non autorise' }, { status: 401 })
   const userId = (session.user as { id: string }).id
 
-  const quiz = await prisma.quiz.findFirst({ where: { id: params.id, userId }, select: { id: true } })
+  const quiz = await prisma.quiz.findFirst({
+    where: { id: params.id, userId },
+    select: { id: true, translations: true, questions: { orderBy: { position: 'asc' }, select: { options: true } } },
+  })
   if (!quiz) return NextResponse.json({ error: 'QCM introuvable' }, { status: 404 })
 
   const body = await req.json()
-  const data: { title?: string; published?: boolean; deckId?: string | null } = {}
+  const data: { title?: string; published?: boolean; deckId?: string | null; translations?: Prisma.InputJsonValue | typeof Prisma.DbNull } = {}
   if (typeof body.title === 'string') {
     if (!body.title.trim()) return NextResponse.json({ error: 'Titre requis' }, { status: 400 })
     data.title = body.title.trim()
@@ -118,6 +124,15 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     }
   }
 
+  let dropped: string[] = []
+  const trInput = body.translations !== undefined ? body.translations : questions ? quiz.translations : undefined
+  if (trInput !== undefined) {
+    const base = questions ?? quiz.questions.map((q) => ({ options: q.options as string[] }))
+    const r = sanitizeTranslations(trInput, base)
+    dropped = r.dropped
+    data.translations = Object.keys(r.value).length ? (r.value as unknown as Prisma.InputJsonValue) : Prisma.DbNull
+  }
+
   await prisma.$transaction(async (tx) => {
     await tx.quiz.update({ where: { id: quiz.id }, data })
     if (questions) {
@@ -132,7 +147,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       })
     }
   })
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, dropped })
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {

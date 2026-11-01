@@ -139,3 +139,44 @@ Retourne UNIQUEMENT un JSON valide : {"questions":[{"question":"...","options":[
   try { parsed = JSON.parse(raw) } catch { return { questions: [], skipped: 0 } }
   return sanitizeLenient(parsed.questions)
 }
+
+export const QUIZ_LANGS: [string, string][] = [
+  ['en', 'Anglais'], ['fr', 'Francais'], ['es', 'Espagnol'], ['de', 'Allemand'],
+  ['pt', 'Portugais'], ['it', 'Italien'], ['ar', 'Arabe'], ['zh', 'Chinois'],
+]
+
+export interface QuizTranslation {
+  title: string
+  questions: { question: string; options: string[]; explanation: string; optionExplanations: string[] }[]
+}
+
+/** Keeps only translations whose structure matches the base questions (same count, same options count). */
+export function sanitizeTranslations(
+  input: unknown,
+  base: { options: string[] }[],
+): { value: Record<string, QuizTranslation>; dropped: string[] } {
+  const value: Record<string, QuizTranslation> = {}
+  const dropped: string[] = []
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return { value, dropped }
+  const str = (x: unknown) => (typeof x === 'string' ? x.trim() : '')
+  for (const [lang, raw] of Object.entries(input as Record<string, unknown>)) {
+    if (!QUIZ_LANGS.some(([k]) => k === lang)) continue
+    const r = raw as { title?: unknown; questions?: unknown }
+    const qs = Array.isArray(r?.questions) ? (r.questions as Record<string, unknown>[]) : []
+    let ok = qs.length === base.length && !!str(r?.title)
+    const questions: QuizTranslation['questions'] = []
+    for (let i = 0; ok && i < base.length; i++) {
+      const q = qs[i] ?? {}
+      const opts = Array.isArray(q.options) ? q.options.map(str) : []
+      const exps = Array.isArray(q.optionExplanations) ? q.optionExplanations.map(str) : []
+      if (!str(q.question) || opts.length !== base[i].options.length || opts.some((o) => !o)) { ok = false; break }
+      questions.push({
+        question: str(q.question), options: opts, explanation: str(q.explanation),
+        optionExplanations: base[i].options.map((_, k) => exps[k] ?? ''),
+      })
+    }
+    if (ok) value[lang] = { title: str(r.title), questions }
+    else dropped.push(lang)
+  }
+  return { value, dropped }
+}

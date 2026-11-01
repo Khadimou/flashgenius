@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Non autorise' }, { status: 401 })
 
-  const { questions, targetLang } = await req.json()
+  const { questions, targetLang, title } = await req.json()
   const lang = LANG_NAMES[String(targetLang ?? '').toLowerCase()]
   if (!lang) return NextResponse.json({ error: 'Langue non supportee' }, { status: 400 })
   if (!Array.isArray(questions) || questions.length === 0 || questions.length > 30) {
@@ -50,9 +50,9 @@ export async function POST(req: NextRequest) {
           role: 'system',
           content: `You are a professional translator. Translate every string value of the JSON you receive into ${lang}.
 Rules: keep the exact same JSON structure, the same number of questions, the same number of items and the same order in every array. Keep empty strings empty. Do not translate code, commands, ARNs, service/product names (e.g. AWS Lambda, Amazon S3), or acronyms. Do not add commentary.
-Return ONLY valid JSON: {"questions":[{"question":"","options":[],"explanation":"","optionExplanations":[]}]}`,
+Return ONLY valid JSON: {"title":"","questions":[{"question":"","options":[],"explanation":"","optionExplanations":[]}]}`,
         },
-        { role: 'user', content: JSON.stringify({ questions: payload }) },
+        { role: 'user', content: JSON.stringify({ title: typeof title === 'string' ? title : '', questions: payload }) },
       ],
     })
     const parsed = JSON.parse(completion.choices[0].message.content ?? '{}')
@@ -72,7 +72,7 @@ Return ONLY valid JSON: {"questions":[{"question":"","options":[],"explanation":
           : src.optionExplanations,
       }
     })
-    return NextResponse.json({ questions: translated })
+    return NextResponse.json({ questions: translated, title: typeof parsed.title === 'string' ? parsed.title : '' })
   } catch (e) {
     console.error('quiz translate:', e)
     return NextResponse.json({ error: 'Echec de la traduction, reessaie' }, { status: 500 })
