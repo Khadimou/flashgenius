@@ -11,7 +11,7 @@ const NAV = [
   { href:'/app', label:'Tableau de bord', icon:'🏠', exact:true },
   { href:'/app/generate', label:'Generer', icon:'⚡', exact:false },
   { href:'/app/library', label:'Bibliotheque', icon:'📚', exact:false },
-  { href:'/app/courses', label:'Cours', icon:'🎓', exact:false },
+  { href:'/app/courses', label:'Cours', icon:'🎓', exact:false, teacherOnly:true },
   { href:'/app/quizzes', label:'QCM', icon:'📝', exact:false },
   { href:'/app/sr', label:'Revision SR', icon:'🧠', exact:false },
 ]
@@ -22,7 +22,8 @@ const THEMES = [
   { value:'system',label:'💻' },
 ] as const
 
-export default function Sidebar({ user }: { user: User }) {
+export default function Sidebar({ user, role }: { user: User; role: 'STUDENT' | 'TEACHER' }) {
+  const items = NAV.filter((n) => !('teacherOnly' in n) || role === 'TEACHER')
   const path = usePathname()
   const { theme, setTheme } = useTheme()
 
@@ -40,7 +41,7 @@ export default function Sidebar({ user }: { user: User }) {
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {NAV.map((n) => (
+          {items.map((n) => (
             <Link key={n.href} href={n.href}
               className={'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ' + (
                 isActive(n.href, n.exact)
@@ -83,7 +84,7 @@ export default function Sidebar({ user }: { user: User }) {
 
       {/* Mobile bottom nav */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 flex border-t border-white/[0.06] bg-[#070714]/95 backdrop-blur-sm">
-        {NAV.map((n) => (
+        {items.map((n) => (
           <Link key={n.href} href={n.href}
             className={'flex-1 flex flex-col items-center gap-1 py-3 text-xs transition-colors ' + (
               isActive(n.href, n.exact) ? 'text-violet-400' : 'text-white/35 hover:text-white/60'

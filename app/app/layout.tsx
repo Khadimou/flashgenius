@@ -1,6 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
 import Sidebar from '@/components/app/Sidebar'
 import { ThemeProvider } from '@/components/app/ThemeProvider'
 
@@ -12,10 +13,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const session = await getServerSession(authOptions)
   if (!session) redirect('/login')
 
+  const userId = (session.user as { id?: string }).id
+  const dbUser = userId ? await prisma.user.findUnique({ where: { id: userId }, select: { role: true } }) : null
+
   return (
     <ThemeProvider>
       <div className="flex min-h-screen bg-gray-50 dark:bg-[#050510] text-gray-900 dark:text-white">
-        <Sidebar user={session.user} />
+        <Sidebar user={session.user} role={dbUser?.role ?? 'STUDENT'} />
         <main className="flex-1 overflow-y-auto pb-20 md:pb-0">
           {children}
         </main>
