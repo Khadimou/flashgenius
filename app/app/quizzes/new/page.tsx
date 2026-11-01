@@ -88,7 +88,7 @@ export default function NewQuizPage() {
     return (
       <div className="max-w-xl mx-auto px-6 py-16 text-center space-y-3">
         <p className="text-gray-600 dark:text-white/60">Seuls les enseignants peuvent creer des QCM.</p>
-        <Link href="/app/courses" className="text-violet-600 dark:text-violet-400 text-sm hover:underline">Passer en mode enseignant (page Cours)</Link>
+        <Link href="/app/account" className="text-violet-600 dark:text-violet-400 text-sm hover:underline">Passer en mode enseignant (Parametres)</Link>
       </div>
     )
   }
