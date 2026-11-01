@@ -13,6 +13,7 @@ const NAV = [
   { href:'/app/library', label:'Bibliotheque', icon:'📚', exact:false },
   { href:'/app/courses', label:'Cours', icon:'🎓', exact:false, teacherOnly:true },
   { href:'/app/quizzes', label:'QCM', icon:'📝', exact:false },
+  { href:'/app/teachers', label:'Enseignants', icon:'🧑‍🏫', exact:false },
   { href:'/app/sr', label:'Revision SR', icon:'🧠', exact:false },
 ]
 

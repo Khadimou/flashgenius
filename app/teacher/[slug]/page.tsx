@@ -36,6 +36,11 @@ export default async function TeacherProfilePage({ params }: Props) {
         },
         orderBy: { createdAt: 'desc' },
       },
+      quizzes: {
+        where: { published: true },
+        select: { id: true, title: true, createdAt: true, _count: { select: { questions: true } } },
+        orderBy: { createdAt: 'desc' },
+      },
     },
   })
 
@@ -51,6 +56,7 @@ export default async function TeacherProfilePage({ params }: Props) {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center text-xs font-black text-white">F</div>
           <Link href="/" className="font-bold text-gray-900 dark:text-white">FlashGenius</Link>
+          <Link href="/app/teachers" className="ml-auto text-xs text-gray-500 dark:text-white/40 hover:text-violet-500">&larr; Tous les enseignants</Link>
         </div>
       </div>
 
@@ -69,7 +75,7 @@ export default async function TeacherProfilePage({ params }: Props) {
               <p className="text-gray-500 dark:text-white/50 text-sm mt-2 max-w-xl">{teacher.bio}</p>
             )}
             <p className="text-xs text-gray-400 dark:text-white/25 mt-2">
-              {teacher.decks.length} cours disponible{teacher.decks.length > 1 ? 's' : ''}
+              {teacher.decks.length} cours disponible{teacher.decks.length > 1 ? 's' : ''} &middot; {teacher.quizzes.length} QCM
             </p>
           </div>
         </div>
@@ -92,6 +98,27 @@ export default async function TeacherProfilePage({ params }: Props) {
                   href={`/join/${deck.id}`}
                   className="block w-full text-center py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 transition-all">
                   Rejoindre
+                </Link>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Quizzes */}
+        <h2 className="font-semibold text-gray-900 dark:text-white mt-10 mb-4">QCM publies</h2>
+        {teacher.quizzes.length === 0 ? (
+          <p className="text-gray-400 dark:text-white/30 text-sm">Aucun QCM publie pour l&apos;instant.</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {teacher.quizzes.map((qz) => (
+              <div key={qz.id}
+                className="bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.07] rounded-2xl p-5 hover:border-violet-300 dark:hover:border-violet-500/30 transition-all">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-1">{qz.title}</h3>
+                <p className="text-xs text-gray-400 dark:text-white/30 mb-4">{qz._count.questions} questions</p>
+                <Link
+                  href={`/app/quizzes/${qz.id}`}
+                  className="block w-full text-center py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 transition-all">
+                  Faire le QCM
                 </Link>
               </div>
             ))}
