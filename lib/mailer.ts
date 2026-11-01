@@ -67,3 +67,27 @@ export async function sendWelcomeEmail(to: string) {
     `,
   })
 }
+
+export async function sendPasswordResetEmail(to: string, url: string) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`\n[Password reset] ${to}\n${url}\n`)
+    return
+  }
+  await transporter.sendMail({
+    from: process.env.EMAIL_FROM ?? 'FlashGenius <noreply@flashgenius.app>',
+    to,
+    subject: 'Reinitialisation de ton mot de passe FlashGenius',
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:40px 20px;background:#050510;color:#fff;border-radius:16px">
+        <div style="font-size:24px;font-weight:900;color:#a78bfa;margin-bottom:8px">FlashGenius</div>
+        <p style="color:#d1d5db;margin-bottom:24px">Tu as demande a reinitialiser ton mot de passe. Clique ci-dessous pour en choisir un nouveau :</p>
+        <a href="${url}" style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff;padding:14px 28px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px">
+          Choisir un nouveau mot de passe
+        </a>
+        <p style="color:#6b7280;font-size:12px;margin-top:24px">
+          Ce lien expire dans 1 heure et ne fonctionne qu'une fois. Si tu n'es pas a l'origine de cette demande, ignore ce message.
+        </p>
+      </div>
+    `,
+  })
+}

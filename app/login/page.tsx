@@ -91,8 +91,11 @@ function LoginForm() {
             className="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 disabled:opacity-50 transition-all">
             {status === 'loading' ? 'Connexion...' : 'Se connecter →'}
           </button>
-          <p className="text-center text-white/25 text-xs pt-1">
-            Pas encore de mot de passe ? Connecte-toi avec un lien magique, puis definis-le dans Parametres.
+          <p className="text-center text-sm pt-1">
+            <Link href="/forgot-password" className="text-white/40 hover:text-white/70">Mot de passe oublie ?</Link>
+          </p>
+          <p className="text-center text-white/40 text-sm">
+            Pas encore de compte ? <Link href="/register" className="text-violet-400 hover:underline">Creer un compte</Link>
           </p>
         </form>
       ) : (
