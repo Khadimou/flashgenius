@@ -75,7 +75,7 @@ export default function QuizEditor({ questions, onChange }: { questions: QuizQ[]
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ targetLang: lang, questions }),
       })
-      const data = await res.json()
+      const data = await res.json().catch(() => ({ error: "Delai depasse ou reponse invalide du serveur, reessaie." }))
       if (!res.ok) { setTError(data.error ?? "Erreur"); return }
       onChange(questions.map((q, i) => ({ ...q, ...data.questions[i] })))
     } catch {

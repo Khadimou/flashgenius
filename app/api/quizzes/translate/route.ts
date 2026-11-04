@@ -41,38 +41,55 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      response_format: { type: 'json_object' },
-      temperature: 0.2,
-      messages: [
-        {
-          role: 'system',
-          content: `You are a professional translator. Translate every string value of the JSON you receive into ${lang}.
+    // gpt-4o-mini writes ~100 tokens/s: one call for 30 questions takes ~80s (> function limit).
+    // So we translate small chunks in parallel (~15s whatever the quiz size).
+    const CHUNK = 4
+    const same = (a: unknown, n: number) => Array.isArray(a) && a.length === n && a.every((x) => typeof x === 'string')
+
+    const translateChunk = async (chunk: Q[], withTitle: boolean) => {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const completion = await openai.chat.completions.create({
+            model: 'gpt-4o-mini',
+            response_format: { type: 'json_object' },
+            temperature: 0.2,
+            messages: [
+              {
+                role: 'system',
+                content: `You are a professional translator. Translate every string value of the JSON you receive into ${lang}.
 Rules: keep the exact same JSON structure, the same number of questions, the same number of items and the same order in every array. Keep empty strings empty. Do not translate code, commands, ARNs, service/product names (e.g. AWS Lambda, Amazon S3), or acronyms. Do not add commentary.
 Return ONLY valid JSON: {"title":"","questions":[{"question":"","options":[],"explanation":"","optionExplanations":[]}]}`,
-        },
-        { role: 'user', content: JSON.stringify({ title: typeof title === 'string' ? title : '', questions: payload }) },
-      ],
-    })
-    const parsed = JSON.parse(completion.choices[0].message.content ?? '{}')
-    const out = parsed.questions
-    if (!Array.isArray(out) || out.length !== payload.length) throw new Error('shape')
-
-    const translated = payload.map((src, i) => {
-      const t = out[i] ?? {}
-      const same = (a: unknown, n: number) => Array.isArray(a) && a.length === n && a.every((x) => typeof x === 'string')
-      if (typeof t.question !== 'string' || !same(t.options, src.options.length)) throw new Error('shape')
-      return {
-        question: t.question,
-        options: t.options as string[],
-        explanation: typeof t.explanation === 'string' ? t.explanation : src.explanation,
-        optionExplanations: same(t.optionExplanations, src.optionExplanations.length)
-          ? (t.optionExplanations as string[])
-          : src.optionExplanations,
+              },
+              { role: 'user', content: JSON.stringify({ title: withTitle && typeof title === 'string' ? title : '', questions: chunk }) },
+            ],
+          })
+          const parsed = JSON.parse(completion.choices[0].message.content ?? '{}')
+          const out = parsed.questions
+          if (!Array.isArray(out) || out.length !== chunk.length) throw new Error('shape')
+          const questions = chunk.map((src, i) => {
+            const t = out[i] ?? {}
+            if (typeof t.question !== 'string' || !same(t.options, src.options.length)) throw new Error('shape')
+            return {
+              question: t.question,
+              options: t.options as string[],
+              explanation: typeof t.explanation === 'string' ? t.explanation : src.explanation,
+              optionExplanations: same(t.optionExplanations, src.optionExplanations.length)
+                ? (t.optionExplanations as string[])
+                : src.optionExplanations,
+            }
+          })
+          return { questions, title: typeof parsed.title === 'string' ? parsed.title : '' }
+        } catch (err) {
+          if (attempt === 1) throw err
+        }
       }
-    })
-    return NextResponse.json({ questions: translated, title: typeof parsed.title === 'string' ? parsed.title : '' })
+      throw new Error('unreachable')
+    }
+
+    const chunks: Q[][] = []
+    for (let i = 0; i < payload.length; i += CHUNK) chunks.push(payload.slice(i, i + CHUNK))
+    const results = await Promise.all(chunks.map((c, i) => translateChunk(c, i === 0)))
+    return NextResponse.json({ questions: results.flatMap((r) => r.questions), title: results[0].title })
   } catch (e) {
     console.error('quiz translate:', e)
     return NextResponse.json({ error: 'Echec de la traduction, reessaie' }, { status: 500 })

@@ -151,7 +151,7 @@ export default function QuizDetailPage() {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ targetLang: code, title: data.quiz.title, questions: data.quiz.questions }),
       })
-      const r = await res.json()
+      const r = await res.json().catch(() => ({ error: "Delai depasse ou reponse invalide du serveur, reessaie." }))
       if (!res.ok) { setError(r.error ?? "Erreur"); return }
       if (await saveTranslations({ ...data.quiz.translations, [code]: { title: r.title || data.quiz.title, questions: r.questions } })) setAddLang("")
     } catch {
