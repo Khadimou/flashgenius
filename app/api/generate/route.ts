@@ -64,8 +64,26 @@ export async function POST(req: NextRequest) {
       },
     })
 
+    // Safety net: keep what was generated (and paid in quota) even if the user never clicks "Sauvegarder"
+    let draftDeckId: string | null = null
+    try {
+      const label = now.toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })
+      const draft = await prisma.deck.create({
+        data: {
+          name: 'Brouillon ' + label,
+          userId,
+          cards: { create: cards.map((c, i) => ({ question: c.question, answer: c.answer, category: c.category ?? null, position: i })) },
+        },
+        select: { id: true },
+      })
+      draftDeckId = draft.id
+    } catch (e) {
+      console.error('generate draft save:', e)
+    }
+
     return NextResponse.json({
       cards,
+      draftDeckId,
       usage: {
         used: currentCount + 1,
         limit: user.isPremium ? null : FREE_MONTHLY_LIMIT,
