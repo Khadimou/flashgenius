@@ -41,6 +41,23 @@ export default function GeneratePage() {
   const MIN = 20
   const FREE_LIMIT = 10
 
+  const unsaved = cards.length > 0 && !saving
+  useEffect(() => {
+    if (!unsaved) return
+    const onUnload = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = '' }
+    const onClick = (e: MouseEvent) => {
+      const a = (e.target as HTMLElement).closest?.('a[href]') as HTMLAnchorElement | null
+      if (a && a.origin === window.location.origin && a.pathname !== window.location.pathname &&
+          !confirm('Tes flashcards ne sont pas sauvegardees : elles seront perdues si tu quittes cette page. Quitter quand meme ?')) {
+        e.preventDefault()
+        e.stopPropagation()
+      }
+    }
+    window.addEventListener('beforeunload', onUnload)
+    document.addEventListener('click', onClick, true)
+    return () => { window.removeEventListener('beforeunload', onUnload); document.removeEventListener('click', onClick, true) }
+  }, [unsaved])
+
   useEffect(() => {
     fetch('/api/account/me')
       .then((r) => r.json())
@@ -484,6 +501,7 @@ export default function GeneratePage() {
             <div>
               <h2 className="font-bold text-gray-900 dark:text-white">{cards.length} flashcards generees</h2>
               <p className="text-xs text-gray-500 dark:text-white/40 mt-0.5">Modifiez, reordonnez ou supprimez des cartes avant de sauvegarder.</p>
+              <p className="text-xs font-medium text-amber-600 dark:text-amber-400 mt-1">Pas encore dans ta bibliotheque : clique sur &quot;Sauvegarder&quot; pour les garder.</p>
             </div>
             <div className="flex gap-2">
               <button onClick={() => { setCards([]); setText('') }}
@@ -550,6 +568,7 @@ export default function GeneratePage() {
             <p className="text-sm text-gray-500 dark:text-white/40 mb-5">
               {cards.filter((c) => c.question && c.answer).length} cartes valides
             </p>
+            {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
             <input
               value={deckName} onChange={(e) => setDeckName(e.target.value)}
               placeholder="Nom du deck (ex: Biologie - Mitose)"
