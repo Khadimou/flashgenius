@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     explanation: String(q.explanation ?? ''),
     optionExplanations: Array.isArray(q.optionExplanations) ? q.optionExplanations.map((o) => String(o ?? '')) : [],
   }))
-  if (JSON.stringify(payload).length > 40_000) {
+  if (JSON.stringify(payload).length > 300_000) {
     return NextResponse.json({ error: 'QCM trop long pour etre traduit en une fois' }, { status: 400 })
   }
 
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
               {
                 role: 'system',
                 content: `You are a professional translator. Translate every string value of the JSON you receive into ${lang}.
-Rules: keep the exact same JSON structure, the same number of questions, the same number of items and the same order in every array. Keep empty strings empty. Do not translate code, commands, ARNs, service/product names (e.g. AWS Lambda, Amazon S3), or acronyms. Do not add commentary.
+Rules: keep the exact same JSON structure, the same number of questions, the same number of items and the same order in every array. Keep empty strings empty. If a string is already written in ${lang}, return it unchanged. Do not translate code, commands, ARNs, service/product names (e.g. AWS Lambda, Amazon S3), or acronyms. Do not add commentary.
 Return ONLY valid JSON: {"title":"","questions":[{"question":"","options":[],"explanation":"","optionExplanations":[]}]}`,
               },
               { role: 'user', content: JSON.stringify({ title: withTitle && typeof title === 'string' ? title : '', questions: chunk }) },
