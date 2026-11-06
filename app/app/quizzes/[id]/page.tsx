@@ -335,7 +335,7 @@ export default function QuizDetailPage() {
           <input value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)}
             className="w-full px-4 py-2.5 rounded-xl bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-sm font-semibold text-gray-900 dark:text-white" />
           {attempts.length > 0 && (
-            <p className="text-xs text-amber-600 dark:text-amber-400">Attention : {attempts.length} tentative(s) existent deja. Modifier le nombre de questions rend les statistiques par question non comparables.</p>
+            <p className="text-xs text-gray-500 dark:text-white/50">{attempts.length} tentative(s) existent deja : leurs notes sont conservees. Seules les statistiques par question ignorent les tentatives faites avec un autre nombre de questions.</p>
           )}
           <QuizEditor questions={draft} onChange={setDraft} />
           {error && <p className="text-sm text-red-500">{error}</p>}
@@ -379,13 +379,13 @@ export default function QuizDetailPage() {
           </p>
         ) : (
           <div className="space-y-3">
-            <p className="text-sm text-gray-600 dark:text-white/60">{attempts.length} tentative(s) · moyenne <strong>{avg}%</strong></p>
+            <p className="text-sm text-gray-600 dark:text-white/60">{attempts.length} tentative(s) · moyenne <strong>{avg}%</strong>{attempts.some((a) => a.total !== quiz.questions.length) && <span className="block text-xs text-gray-400 mt-0.5">* tentative faite avant une modification du nombre de questions (note conservee telle quelle).</span>}</p>
             <div className="rounded-2xl border border-gray-200 dark:border-white/[0.07] divide-y divide-gray-100 dark:divide-white/5 overflow-hidden bg-white dark:bg-white/[0.03]">
               {attempts.map((a) => (
                 <div key={a.id} className="flex items-center justify-between px-4 py-2.5 text-sm">
                   <span className="text-gray-800 dark:text-white/80 truncate">{a.student}</span>
                   <span className="shrink-0 text-gray-500 dark:text-white/40 text-xs">{new Date(a.createdAt).toLocaleString("fr-FR")}</span>
-                  <span className="shrink-0 font-bold text-violet-600 dark:text-violet-400 w-14 text-right">{a.score}/{a.total}</span>
+                  <span className="shrink-0 font-bold text-violet-600 dark:text-violet-400 w-14 text-right" title={a.total !== quiz.questions.length ? "Tentative faite avant une modification du QCM" : undefined}>{a.score}/{a.total}{a.total !== quiz.questions.length ? "*" : ""}</span>
                 </div>
               ))}
             </div>
